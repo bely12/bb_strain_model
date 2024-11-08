@@ -6,10 +6,10 @@ from collections import Counter
 import itertools
 import math
 
-# for clustering function 
-from sklearn.metrics import pairwise_distances
-from sklearn.metrics import silhouette_score
-from sklearn_extra.cluster import KMedoids
+# # for clustering function 
+# from sklearn.metrics import pairwise_distances
+# from sklearn.metrics import silhouette_score
+# from sklearn_extra.cluster import KMedoids
 
 # calculate hamming distance for 2 strains
 def hamming_distance(string1, string2):
