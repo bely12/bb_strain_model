@@ -40,6 +40,15 @@ def mnp_probabilities(strains):
     res.append({'strain': strain, 'mnp_value': mnp_values[strain], 'rodent': round((mnp_values[strain]**2),4), 'bird': round((1-mnp_values[strain])**2,4)})
   return res
 
+def hd_matrix(string_list):
+  n = len(string_list)
+  dist_matrix = np.zeros((n,n))
+  for i in range(n):
+    for j in range(i+1, n):
+      dist_matrix[i,j] = np.count_nonzero(np.array(list(string_list[i])) != np.array(list(string_list[j])))
+      dist_matrix[j, i] = dist_matrix[i, j]
+  return dist_matrix
+
 # class for managing host population
 class Host:
 
@@ -150,6 +159,7 @@ class Vector:
           antigen_distances.append(hamming_distance(strain, other_strain))
     if antigen_distances == []:
       self.avg_antigen_distance = 0.0
+      self.antigen_distance_counts = [0]
     else:
       self.avg_antigen_distance = round(np.mean(antigen_distances),3)
       self.antigen_distance_counts = antigen_distances
@@ -219,6 +229,7 @@ class Vector:
           antigen_distances.append(hamming_distance(strain, other_strain))
     if antigen_distances == []:
       self.avg_antigen_distance = 0.0
+      self.antigen_distance_counts = [0]
     else:
       self.avg_antigen_distance = round(np.mean(antigen_distances),3)
       self.antigen_distance_counts = antigen_distances
@@ -285,9 +296,11 @@ class Pathogen:
       temp_strain_set = self.pop[i]['strain_pop'] # define the list of pop members
 
       for j in range(len(temp_strain_set)): #cycle through the members of each strain population
+        mut_pois_dist = np.random.poisson(rate, len(temp_strain_set[j]))
         new_string = []
         for k in range(len(temp_strain_set[j])): #cycle through bits of string
-          if random.random() <= rate: #decide whether to mutate
+          if mut_pois_dist[k] > 0:
+          #if random.random() <= rate: #decide whether to mutate
             new_string.append(str(random.randint(0,1))) #if yes, choose random 0 or 1
           else:
             new_string.append(temp_strain_set[j][k]) #if no, select same bit
@@ -297,15 +310,21 @@ class Pathogen:
       self.pop[i]['strain_pop'] = temp_strain_set #update the pop list
 
   # this function selects top 10 most fit strains and resets pop size to 100
-  def selection(self, host_infections, values, host_type = None, n=10, cross_reactivity = False, MNP = False): # n has to be a value that 100 is divisible by
+  def selection(self, host_infections, values, host_type = None, n=10, cross_reactivity = False, MNP = False, uniform_fitness = False): # n has to be a value that 100 is divisible by
 
     if cross_reactivity == False and MNP == False:
       for i in range(len(self.pop)):
-        fitness_dict = []
-        for strain in self.pop[i]['strain_pop']:
-          fitness_dict.append({'strain': strain, 'fitness': values[strain]})
-        ten_most_fit = [d['strain'] for d in sorted(fitness_dict, key=lambda x: x['fitness'], reverse=True)[:n]]
-        self.pop[i]['strain_pop'] = [item for item in ten_most_fit] * (100//n)
+        if uniform_fitness == True:
+          #self.pop[i]['strain_pop'] = [random.choice(self.pop[i]['strain_pop']) for _ in range(100)] # choosing all 100 
+          random_ten = random.sample(self.pop[i]['strain_pop'], 10)
+          #random_ten = random.choice(self.pop[i]['strain_pop'] for _ in range(10)) # randomly choose 10 members to repopulate with
+          self.pop[i]['strain_pop'] = [item for item in random_ten] * (100//n)
+        else:
+          fitness_dict = []
+          for strain in self.pop[i]['strain_pop']:
+            fitness_dict.append({'strain': strain, 'fitness': values[strain]})
+          ten_most_fit = [d['strain'] for d in sorted(fitness_dict, key=lambda x: x['fitness'], reverse=True)[:n]]
+          self.pop[i]['strain_pop'] = [item for item in ten_most_fit] * (100//n)
 
     if cross_reactivity == True:
       for i in range(len(self.pop)):
@@ -333,7 +352,7 @@ class Pathogen:
 
 
   # this function determines which strains will be transferred from the vector to the host and returns a list of those strains
-  def tick2host_transmission(self, host_strains, values, host_type=None, cross_reactivity = False, MNP = False):
+  def tick2host_transmission(self, host_strains, values, host_type=None, cross_reactivity = False, MNP = False, uniform_fitness = False):
     # grab most dominant variant from each strain community, all all variants if no selection
     winning_strains = []
     for i in range(len(self.pop)):
@@ -347,9 +366,12 @@ class Pathogen:
 
     # if fitness is randomly assigned
     if cross_reactivity == False and MNP == False:
-      for strain in winning_strains:
-        if random.random() < values[strain]:
-          transmitted_strains.append(strain)
+      if uniform_fitness == True:
+        transmitted_strains = random.sample(winning_strains, random.randint(0, len(winning_strains)))
+      else: 
+        for strain in winning_strains:
+          if random.random() < values[strain]:
+            transmitted_strains.append(strain)
       return transmitted_strains
 
     # if cross reactivity is on

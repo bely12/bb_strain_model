@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(
     description='Vector borne pathogen evolution simulation'
     ' \n', formatter_class=RawTextHelpFormatter)
 
-parser.add_argument('-mode', type=int, help='1: cross reactivity, 2: host specialization, 3:random fitness\n')
+parser.add_argument('-mode', type=int, help='1: cross reactivity, 2: host specialization, 3:random fitness, 4: uniform fitness value\n')
 parser.add_argument('-antigen_length', type=int, help='size of bit string representing antigen')
 parser.add_argument('-mut', type=float, default=0.01, help='per site mutation rate in antigen')
 parser.add_argument('-vector_pop_size', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
@@ -29,12 +29,19 @@ sim_years = args.years
 if args.mode == 1:
   cross_reactivity = True
   host_specialization = False
+  uniform_fitness_value = False
 if args.mode == 2:
   cross_reactivity = False
   host_specialization = True
+  uniform_fitness_value = False
 if args.mode == 3:
   cross_reactivity = False
   host_specialization = False
+  uniform_fitness_value = False
+if args.mode == 4:
+  cross_reactivity = False
+  host_specialization = False
+  uniform_fitness_value = True
 
 # print sim parameters
 print('Parameters','\n',
@@ -44,6 +51,7 @@ print('Parameters','\n',
       'per site mutation rate: ', mutation_rate,'\n'
       'cross reactivity: ', cross_reactivity,'\n',
       'host specialization: ', host_specialization,'\n',
+      'uniform fitness value: ', uniform_fitness_value, '\n',
       'simulated years: ', sim_years)
 
 
@@ -74,7 +82,7 @@ big_data = [{'year': ticks.year,
              'antigenic_distance': ticks.avg_antigen_distance,
              'active_strains': ticks.current_strain_count,
              'avg_carried': ticks.avg_carried}]
-pairwise_antigen_distances = [] # there is no data to input initially since we are starting with 1 strain
+pairwise_antigen_distances = [ticks.antigen_distance_counts]
 if host_specialization == True:
   mnp_pop_values = [ticks.mnp_recs(mnp_values2)]
 
@@ -99,16 +107,20 @@ for i in tqdm(range(sim_years)):
             bb.selection(host_infections=current_host['infection'], values=probabilities, cross_reactivity= True)
           if host_specialization == True:
             bb.selection(host_infections=current_host['infection'], host_type= current_host['host_type'], values=mnp_values2, MNP=True)
-          if cross_reactivity == False and host_specialization == False:
+          if cross_reactivity == False and host_specialization == False and uniform_fitness_value == False:
             bb.selection(host_infections=current_host['infection'], values=fitness_values)
+          if uniform_fitness_value == True:
+            bb.selection(host_infections=current_host['infection'], values=fitness_values, uniform_fitness= True)
 
         # determine strains to be transmitted from tick to host
         if cross_reactivity == True:
           strains_from_tick = bb.tick2host_transmission(current_host['infection'], values=probabilities, cross_reactivity= True)
-        if cross_reactivity == False and host_specialization == False:
+        if cross_reactivity == False and host_specialization == False and uniform_fitness_value == False:
           strains_from_tick = bb.tick2host_transmission(current_host['infection'], values=fitness_values)
         if host_specialization == True:
           strains_from_tick = bb.tick2host_transmission(current_host['infection'], host_type= current_host['host_type'], values=mnp_values2, MNP=True)
+        if uniform_fitness_value == True:
+          strains_from_tick = bb.tick2host_transmission(current_host['infection'], values=fitness_values, uniform_fitness=True)
 
         strains_from_host = bb.host2tick_transmission(current_host['infection']) # determine strains to be transmitted from host to tick
 
@@ -138,7 +150,31 @@ for i in tqdm(range(sim_years)):
   if host_specialization == True:
     mnp_pop_values.append(ticks.mnp_recs(mnp_values2))
 
+# calculate sihouette value
+from scipy.spatial.distance import pdist, squareform
+from scipy.cluster.hierarchy import linkage, fcluster
+from sklearn.metrics import silhouette_score
 
+dist_matrix = be.hd_matrix(ticks.current_strains)
+condensed_dist_matrix = squareform(dist_matrix)
+linkage_matrix = linkage(condensed_dist_matrix, method='average')
+
+best_sil_score = -1
+best_k = None
+
+for k in range(2, int(len(ticks.current_strains)*0.2)):
+  # assign cluster labels to strings
+  labels = fcluster(linkage_matrix, t=k, criterion='maxclust')
+
+  # compute silhouette score
+  sil_score = silhouette_score(dist_matrix, labels, metric='precomputed')
+    
+  # see if its the best, if so, define it as such
+  if sil_score > best_sil_score:
+    best_sil_score = sil_score
+    best_k = k
+print('clusters: ',best_k)
+print('silhouette score: ',best_sil_score)
 
 ##### data output #####
 if args.out != None:
@@ -203,6 +239,7 @@ if args.plots == 'True':
         f"Mutation rate: {mutation_rate}\n"
         f"Cross reactivity: {cross_reactivity}\n"
         f"Host specialization: {host_specialization}\n"
+        f"Unifrom fitness value: {uniform_fitness_value}\n"
         f"Simulated years: {sim_years}"
     )
     ax.text(0.1, 0.9, sim_parameters, fontsize=12, verticalalignment='top', horizontalalignment='left')
