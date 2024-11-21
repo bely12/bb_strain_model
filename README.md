@@ -1,1 +1,2 @@
-# bb_strain_model
+# Simulating antigen diversification in a vector-borne pathogen.  
+A vector-host-pathogen computational model that simulates antigen diversification under selective pressure from immune cross reactivity and host specialization. The framework combines elements of both ecological and genetic models. Although based on transmission of the bacterial pathogen Borrelia burgdorferi, it can be adapted to other vectorborne pathogens.  
