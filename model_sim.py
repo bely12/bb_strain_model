@@ -1,5 +1,6 @@
 # vector-host-pathogen simulation
 import numpy as np
+import random
 import model_functions as be
 from tqdm import tqdm
 import argparse
@@ -16,8 +17,8 @@ parser.add_argument('-mut', type=float, default=0.01, help='per site mutation ra
 parser.add_argument('-vector_pop_size', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
 parser.add_argument('-years', type=int, help='number of years to simulate')
 parser.add_argument('-plots', default=None, help='set to True if you want plots as output; specify file namein args.plot_file')
-parser.add_argument('-plot_file', help='prefix for plot file name')
 parser.add_argument('-out', default=None, help='prefix for output file')
+parser.add_argument('-run_tag', default = 1, help='unique id for each sim run when doing batch')
 args = parser.parse_args()
 
 ##### set key parameters #####
@@ -43,7 +44,7 @@ if args.mode == 4:
   host_specialization = False
   uniform_fitness_value = True
 
-# print sim parameters
+# print sim parameters; comment out if running batches
 print('Parameters','\n',
       'Vector pop size: ',vector_pop_size,'\n',
       'host pop size: ', round(vector_pop_size/50),'\n',
@@ -74,23 +75,23 @@ if cross_reactivity == False and host_specialization == False:
 
 
 
-##### initialize data containers #####
+##### initialize data containers ##### * for batch running, use pairwise_antigen_distances
 #strain_freqs = [{'year': ticks.year,'strain_community': ticks.strain_set_frequencies}]
-big_data = [{'year': ticks.year,
-             'infection_rate': ticks.infection_rate,
-             'diversity': ticks.diversity,
-             'antigenic_distance': ticks.avg_antigen_distance,
-             'active_strains': ticks.current_strain_count,
-             'avg_carried': ticks.avg_carried}]
+# big_data = [{'year': ticks.year,
+#              'infection_rate': ticks.infection_rate,
+#              'diversity': ticks.diversity,
+#              'antigenic_distance': ticks.avg_antigen_distance,
+#              'active_strains': ticks.current_strain_count,
+#              'avg_carried': ticks.avg_carried}]
 pairwise_antigen_distances = [ticks.antigen_distance_counts]
-if host_specialization == True:
-  mnp_pop_values = [ticks.mnp_recs(mnp_values2)]
+# if host_specialization == True:
+#   mnp_pop_values = [ticks.mnp_recs(mnp_values2)]
 
 
 
-##### sim #####
-#for year in range(sim_years):
-for i in tqdm(range(sim_years)):
+##### sim ##### don't use tqdm if doing batches? 
+for year in range(sim_years):
+#for i in tqdm(range(sim_years)):
   interactions = ticks.interaction(hosts.pop) #schedule current years vector-host interactions 
 
   for day in range(1, 151): # go through the days in the year
@@ -140,73 +141,76 @@ for i in tqdm(range(sim_years)):
 
   # collect data
   #strain_freqs.append({'year': ticks.year,'strain_community': ticks.strain_set_frequencies})
-  big_data.append({'year': ticks.year,
-                   'infection_rate': ticks.infection_rate,
-                   'diversity': ticks.diversity,
-                   'antigenic_distance': ticks.avg_antigen_distance,
-                   'active_strains': ticks.current_strain_count,
-                   'avg_carried': ticks.avg_carried})
+  # big_data.append({'year': ticks.year,
+  #                  'infection_rate': ticks.infection_rate,
+  #                  'diversity': ticks.diversity,
+  #                  'antigenic_distance': ticks.avg_antigen_distance,
+  #                  'active_strains': ticks.current_strain_count,
+  #                  'avg_carried': ticks.avg_carried})
   pairwise_antigen_distances.append(ticks.antigen_distance_counts) 
-  if host_specialization == True:
-    mnp_pop_values.append(ticks.mnp_recs(mnp_values2))
+  # if host_specialization == True:
+  #   mnp_pop_values.append(ticks.mnp_recs(mnp_values2))
 
-# calculate sihouette value
-from scipy.spatial.distance import pdist, squareform
-from scipy.cluster.hierarchy import linkage, fcluster
-from sklearn.metrics import silhouette_score
+# calculate sihouette value and print out at end of sim *keep off, will get this info from R script after batch runs
+# from scipy.spatial.distance import pdist, squareform
+# from scipy.cluster.hierarchy import linkage, fcluster
+# from sklearn.metrics import silhouette_score
 
-dist_matrix = be.hd_matrix(ticks.current_strains)
-condensed_dist_matrix = squareform(dist_matrix)
-linkage_matrix = linkage(condensed_dist_matrix, method='average')
+# dist_matrix = be.hd_matrix(ticks.current_strains)
+# condensed_dist_matrix = squareform(dist_matrix)
+# linkage_matrix = linkage(condensed_dist_matrix, method='average')
 
-best_sil_score = -1
-best_k = None
+# best_sil_score = -1
+# best_k = None
 
-for k in range(2, int(len(ticks.current_strains)*0.2)):
-  # assign cluster labels to strings
-  labels = fcluster(linkage_matrix, t=k, criterion='maxclust')
+# for k in range(2, int(len(ticks.current_strains)*0.2)):
+#   # assign cluster labels to strings
+#   labels = fcluster(linkage_matrix, t=k, criterion='maxclust')
 
-  # compute silhouette score
-  sil_score = silhouette_score(dist_matrix, labels, metric='precomputed')
+#   # compute silhouette score
+#   sil_score = silhouette_score(dist_matrix, labels, metric='precomputed')
     
-  # see if its the best, if so, define it as such
-  if sil_score > best_sil_score:
-    best_sil_score = sil_score
-    best_k = k
-print('clusters: ',best_k)
-print('silhouette score: ',best_sil_score)
+#   # see if its the best, if so, define it as such
+#   if sil_score > best_sil_score:
+#     best_sil_score = sil_score
+#     best_k = k
+# print('clusters: ',best_k)
+# print('silhouette score: ',best_sil_score)
 
 ##### data output #####
 if args.out != None:
   import csv
   import pandas as pd
+  run_tag = 'run_' + str(args.run_tag)
   
   # list of final strains at end of sim 
-  with open(args.out + '_sim_final_antigens.tsv', 'w', newline='') as file:
+  with open(args.out + '_sim_final_antigens.tsv', 'a', newline='') as file:
     writer = csv.writer(file, delimiter='\t')
     for strain in ticks.current_strains:
-      writer.writerow([strain])
+      writer.writerow([run_tag, strain])
   
   # pairwise antigen distances for histogram
   all_distances = [value for sublist in pairwise_antigen_distances for value in sublist]
-  with open(args.out + '_sim_pairwise_antigen_dists.tsv', 'w', newline='') as file:
+  sampled_distances = random.sample(all_distances, 1000)
+  with open(args.out + '_sampled_pairwise_antigen_dists.tsv', 'a', newline='') as file:
     writer = csv.writer(file, delimiter='\t')
-    for value in all_distances:
-      writer.writerow([value])
+    #for value in all_distances:
+    for value in sampled_distances:
+      writer.writerow([run_tag,value])
   
-  # all mnp values for histogram
-  if host_specialization == True:
-    all_mnp = [value for sublist in mnp_pop_values for value in sublist]
-    with open(args.out + '_sim_mnp_pop_values.tsv', 'w', newline='') as file:
-      writer = csv.writer(file, delimiter='\t')
-      for value in all_mnp:
-        writer.writerow([value])
+  # all mnp values for histogram *turn on if doing single run and/or testing; not relevant for batch
+  # if host_specialization == True:
+  #   all_mnp = [value for sublist in mnp_pop_values for value in sublist]
+  #   with open(args.out + '_sim_mnp_pop_values.tsv', 'w', newline='') as file:
+  #     writer = csv.writer(file, delimiter='\t')
+  #     for value in all_mnp:
+  #       writer.writerow([value])
 
   # main data
-  df = pd.DataFrame(big_data)
-  df.to_csv(args.out+'_sim_data.tsv', sep='\t', index=False, header=True)
+  # df = pd.DataFrame(big_data)
+  # df.to_csv(args.out+'_sim_data.tsv', sep='\t', index=False, header=True)
   
-  # strain frequencies by year
+  # strain frequencies by year *** blows up sim, keep shut off ***
   # rows = []
   # for entry in strain_freqs:
   #   year = entry['year']
@@ -227,7 +231,7 @@ if args.plots == 'True':
   from scipy.spatial.distance import pdist
   from matplotlib.backends.backend_pdf import PdfPages
   
-  with PdfPages(args.plot_file + '_sim_plots.pdf') as pdf:
+  with PdfPages(args.out + '_sim_plots.pdf') as pdf:
     # dummy plot for parameters text
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.axis('off')
