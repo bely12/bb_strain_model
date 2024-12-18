@@ -6,11 +6,6 @@ from collections import Counter
 import itertools
 import math
 
-# # for clustering function 
-# from sklearn.metrics import pairwise_distances
-# from sklearn.metrics import silhouette_score
-# from sklearn_extra.cluster import KMedoids
-
 # calculate hamming distance for 2 strains
 def hamming_distance(string1, string2):
   distance = 0
@@ -152,17 +147,20 @@ class Vector:
         frequencies[item] = 0.0
     self.strain_set_frequencies = frequencies
 
-    antigen_distances = []
-    for strain in self.current_strains:
-      for other_strain in self.current_strains:
-        if strain != other_strain:
-          antigen_distances.append(hamming_distance(strain, other_strain))
-    if antigen_distances == []:
-      self.avg_antigen_distance = 0.0
-      self.antigen_distance_counts = [0]
-    else:
-      self.avg_antigen_distance = round(np.mean(antigen_distances),3)
-      self.antigen_distance_counts = antigen_distances
+    self.avg_gen_dist = [{'year': self.year, 'avg_dist': 0.0}]
+    self.antigen_distances = [] # create empty list upon intitializing pop, will append with ant dists during sim
+
+    # antigen_distances = []
+    # for strain in self.current_strains:
+    #   for other_strain in self.current_strains:
+    #     if strain != other_strain:
+    #       antigen_distances.append(hamming_distance(strain, other_strain))
+    # if antigen_distances == []:
+    #   self.avg_antigen_distance = 0.0
+    #   self.antigen_distance_counts = [0]
+    # else:
+    #   self.avg_antigen_distance = round(np.mean(antigen_distances),3)
+    #   self.antigen_distance_counts = antigen_distances
 
   ## function molts larva to nymphs and hatches new nymphs; current nymphs age out to adults and are not included in sim
   def update_pop(self):
@@ -222,17 +220,28 @@ class Vector:
         frequencies[item] = 0.0
     self.strain_set_frequencies = frequencies
 
-    antigen_distances = []
-    for strain in self.current_strains:
-      for other_strain in self.current_strains:
-        if strain != other_strain:
-          antigen_distances.append(hamming_distance(strain, other_strain))
-    if antigen_distances == []:
-      self.avg_antigen_distance = 0.0
-      self.antigen_distance_counts = [0]
-    else:
-      self.avg_antigen_distance = round(np.mean(antigen_distances),3)
-      self.antigen_distance_counts = antigen_distances
+    totals = [item for d in self.pop for item in d['strains']]
+    generation_distances = []
+    for i in range(len(totals)):
+      for j in range(len(totals)):
+        if i != j:
+          dist = hamming_distance(totals[i], totals[j])
+          self.antigen_distances.append(dist)
+          generation_distances.append(dist)
+    #self.avg_gen_dist.append({'year': self.year, 'avg_dist': round(np.mean(generation_distances),3)})
+    self.avg_gen_dist = round(np.mean(generation_distances),3)
+    
+    # antigen_distances = []
+    # for strain in self.current_strains:
+    #   for other_strain in self.current_strains:
+    #     if strain != other_strain:
+    #       antigen_distances.append(hamming_distance(strain, other_strain))
+    # if antigen_distances == []:
+    #   self.avg_antigen_distance = 0.0
+    #   self.antigen_distance_counts = [0]
+    # else:
+    #   self.avg_antigen_distance = round(np.mean(antigen_distances),3)
+    #   self.antigen_distance_counts = antigen_distances
 
   # function assigns a host for each tick to bite and the day/s it bites on
   def interaction(self, hosts):
@@ -418,40 +427,4 @@ class Pathogen:
       return transmitted_strains
     else:
       return []
-
-# a few ways of determining the number of clusters to use for t-SNE analysis
-# def antigen_clusters(antigens):
-#   binary_data = np.array([[int(bit) for bit in s] for s in antigens])
-#   hamming_distances = pairwise_distances(binary_data, metric='hamming')
-
-#   sil_scores = []
-#   cluster_range = range(2, 11)  # Trying n_clusters from 2 to 10
-#   for k in cluster_range:
-#     kmedoids = KMedoids(n_clusters=k, metric='precomputed', random_state=42)
-#     kmedoids.fit(hamming_distances)
-#     score = silhouette_score(hamming_distances, kmedoids.labels_, metric='precomputed')
-#     sil_scores.append(score)
-
-#   sil_dict = {}
-#   index = 0
-#   for i in cluster_range:
-#     sil_dict[i] = sil_scores[index]
-#     index += 1
-#   return max(sil_dict, key=sil_dict.get)
-
-# from scipy.cluster.hierarchy import fcluster
-
-# def antigen_clusters(linkage_data):
-#   # get vertical distances from dendrogram
-#   dists = linkage_data[:, 2]
-#   # get differences between consecutive distances
-#   dist_diffs = np.diff(dists)
-
-#   # find the largest difference
-#   max_gap_index = np.argmax(dist_diffs)
-#   # thresholc go cut tree
-#   optimal_threshold = round(dists[max_gap_index],4)
-#   clusters = fcluster(linkage_data, optimal_threshold, criterion='distance')
-#   num_clusters = len(np.unique(clusters))
-
-#   return num_clusters
+    

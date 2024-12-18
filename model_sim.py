@@ -75,23 +75,24 @@ if cross_reactivity == False and host_specialization == False:
 
 
 
-##### initialize data containers ##### * for batch running, use pairwise_antigen_distances
-#strain_freqs = [{'year': ticks.year,'strain_community': ticks.strain_set_frequencies}]
-# big_data = [{'year': ticks.year,
-#              'infection_rate': ticks.infection_rate,
-#              'diversity': ticks.diversity,
-#              'antigenic_distance': ticks.avg_antigen_distance,
-#              'active_strains': ticks.current_strain_count,
-#              'avg_carried': ticks.avg_carried}]
-pairwise_antigen_distances = [ticks.antigen_distance_counts]
-# if host_specialization == True:
-#   mnp_pop_values = [ticks.mnp_recs(mnp_values2)]
+##### initialize data containers ##### * for batch running, use pairwise_antigen_distances rather than big_data
+#strain_freqs = [{'year': ticks.year,'strain_community': ticks.strain_set_frequencies}] #don't use this, it blows the sim up
+big_data = [{'year': ticks.year,
+             'infection_rate': ticks.infection_rate,
+             'diversity': ticks.diversity,
+             'antigenic_distance': 0,
+             'active_strains': ticks.current_strain_count,
+             'avg_carried': ticks.avg_carried}]
+pairwise_antigen_distances = []
+
+if host_specialization == True:
+  mnp_pop_values = [ticks.mnp_recs(mnp_values2)]
 
 
 
 ##### sim ##### don't use tqdm if doing batches? 
-for year in range(sim_years):
-#for i in tqdm(range(sim_years)):
+#for year in range(sim_years):
+for i in tqdm(range(sim_years)):
   interactions = ticks.interaction(hosts.pop) #schedule current years vector-host interactions 
 
   for day in range(1, 151): # go through the days in the year
@@ -141,41 +142,16 @@ for year in range(sim_years):
 
   # collect data
   #strain_freqs.append({'year': ticks.year,'strain_community': ticks.strain_set_frequencies})
-  # big_data.append({'year': ticks.year,
-  #                  'infection_rate': ticks.infection_rate,
-  #                  'diversity': ticks.diversity,
-  #                  'antigenic_distance': ticks.avg_antigen_distance,
-  #                  'active_strains': ticks.current_strain_count,
-  #                  'avg_carried': ticks.avg_carried})
-  pairwise_antigen_distances.append(ticks.antigen_distance_counts) 
-  # if host_specialization == True:
-  #   mnp_pop_values.append(ticks.mnp_recs(mnp_values2))
+  big_data.append({'year': ticks.year,
+                   'infection_rate': ticks.infection_rate,
+                   'diversity': ticks.diversity,
+                   'antigenic_distance': ticks.avg_gen_dist,
+                   'active_strains': ticks.current_strain_count,
+                   'avg_carried': ticks.avg_carried})
+  pairwise_antigen_distances.append(ticks.antigen_distances) 
+  if host_specialization == True:
+    mnp_pop_values.append(ticks.mnp_recs(mnp_values2))
 
-# calculate sihouette value and print out at end of sim *keep off, will get this info from R script after batch runs
-# from scipy.spatial.distance import pdist, squareform
-# from scipy.cluster.hierarchy import linkage, fcluster
-# from sklearn.metrics import silhouette_score
-
-# dist_matrix = be.hd_matrix(ticks.current_strains)
-# condensed_dist_matrix = squareform(dist_matrix)
-# linkage_matrix = linkage(condensed_dist_matrix, method='average')
-
-# best_sil_score = -1
-# best_k = None
-
-# for k in range(2, int(len(ticks.current_strains)*0.2)):
-#   # assign cluster labels to strings
-#   labels = fcluster(linkage_matrix, t=k, criterion='maxclust')
-
-#   # compute silhouette score
-#   sil_score = silhouette_score(dist_matrix, labels, metric='precomputed')
-    
-#   # see if its the best, if so, define it as such
-#   if sil_score > best_sil_score:
-#     best_sil_score = sil_score
-#     best_k = k
-# print('clusters: ',best_k)
-# print('silhouette score: ',best_sil_score)
 
 ##### data output #####
 if args.out != None:
@@ -199,16 +175,16 @@ if args.out != None:
       writer.writerow([run_tag,value])
   
   # all mnp values for histogram *turn on if doing single run and/or testing; not relevant for batch
-  # if host_specialization == True:
-  #   all_mnp = [value for sublist in mnp_pop_values for value in sublist]
-  #   with open(args.out + '_sim_mnp_pop_values.tsv', 'w', newline='') as file:
-  #     writer = csv.writer(file, delimiter='\t')
-  #     for value in all_mnp:
-  #       writer.writerow([value])
+  if host_specialization == True:
+    all_mnp = [value for sublist in mnp_pop_values for value in sublist]
+    with open(args.out + '_sim_mnp_pop_values.tsv', 'w', newline='') as file:
+      writer = csv.writer(file, delimiter='\t')
+      for value in all_mnp:
+        writer.writerow([value])
 
   # main data
-  # df = pd.DataFrame(big_data)
-  # df.to_csv(args.out+'_sim_data.tsv', sep='\t', index=False, header=True)
+  df = pd.DataFrame(big_data)
+  df.to_csv(args.out+'_sim_data.tsv', sep='\t', index=False, header=True)
   
   # strain frequencies by year *** blows up sim, keep shut off ***
   # rows = []
@@ -220,8 +196,7 @@ if args.out != None:
   # df.to_csv(args.out+'_sim_strain_freqs.tsv', sep='\t', index=False, header=True)
 
 
-
-##### plots #####
+##### plots ##### this is mainly for testing purposes 
 if args.plots == 'True':
   
   # import packages for plotting
