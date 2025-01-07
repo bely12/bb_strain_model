@@ -65,7 +65,7 @@ class Host:
         host_type = '-'
 
       # create host
-      hosts.append({'id': id, 'infections': [], 'host_type': host_type})
+      hosts.append({'id': id, 'infections': [], 'host_type': host_type, 'born': random.choice(range(1,76))})
 
     self.pop = hosts
     self.pop_size = len(self.pop)
@@ -73,6 +73,11 @@ class Host:
     self.rodent_pop_size = len(self.rodent_pop)
     self.bird_pop = [d for d in self.pop if d.get('host_type') == 'bird']
     self.bird_pop_size = len(self.bird_pop)
+
+  def refresh(self, day):
+    for host in self.pop:
+      if host['born'] == day:
+        host['infections'] = []
 
 #####
 
@@ -104,7 +109,8 @@ class Vector:
       if nymph_infections[i] == 0:
         tick_pop.append({'id': id, 'stage': 'nymph', 'strains': []})
       else:
-        tick_pop.append({'id': id, 'stage': 'nymph', 'strains': [{'lineage_id': lin_id,'variant':random.choice(self.current_strains)}]})
+        variant = random.choice(self.current_strains)
+        tick_pop.append({'id': id, 'stage': 'nymph', 'strains': [{'lineage_id': lin_id,'variant':variant,'history': [variant]}]})
         lin_id += 1
 
     # create larva
@@ -256,7 +262,7 @@ class Vector:
   def recombination(self, rate = 0.01):
     break_point = len(self.strain_set[0]) // 2
     for tick in self.pop:
-      # only assing strains and move forward if there are multiple strains being carried by the tick
+      # only move forward if there are multiple strains being carried by the tick
       if tick['strains'] != [] and len(tick['strains']) > 1:
         strains = tick['strains']
       else:
@@ -275,25 +281,32 @@ class Vector:
           else:
             new_strain = donor['variant'][:break_point] + strain['variant'][break_point:]
           # update ticks strains to reflect recombination events
-          tick['strains'][j]['variant'] = new_strain
+          if new_strain != strain['variant']:
+            tick['strains'][j]['history'].append(new_strain) # update history
+          tick['strains'][j]['variant'] = new_strain # recombined strain replaces parent strain
 
 
   def mutate(self, rate = 0.01):
     for i in range(len(self.pop)):
-      temp_strain_set = copy.deepcopy(self.pop[i]['strains'])
-      for j in range(len(temp_strain_set)):
-        variant = temp_strain_set[j]['variant']
-        mut_pois_dist = np.random.poisson(rate, len(variant))
-        new_string = []
-        for k in range(len(variant)):
-          if mut_pois_dist[k] > 0:
-            new_bit = str(random.randint(0,1))
-            new_string.append(new_bit)
-          else:
-            new_string.append(variant[k])
-        mutated_string = ''.join(new_string)
-        temp_strain_set[j]['variant'] = mutated_string
-      self.pop[i]['strains'] = temp_strain_set
+      if self.pop[i]['strains'] != []:
+        temp_strain_set = copy.deepcopy(self.pop[i]['strains'])
+        for j in range(len(temp_strain_set)):
+          variant = temp_strain_set[j]['variant']
+          mut_pois_dist = np.random.poisson(rate, len(variant))
+          new_string = []
+          for k in range(len(variant)):
+            if mut_pois_dist[k] > 0:
+              new_bit = str(random.randint(0,1))
+              new_string.append(new_bit)
+            else:
+              new_string.append(variant[k])
+          mutated_string = ''.join(new_string)
+          if mutated_string != variant:
+            temp_strain_set[j]['history'].append(mutated_string)
+          temp_strain_set[j]['variant'] = mutated_string
+        self.pop[i]['strains'] = temp_strain_set
+      else:
+        continue
 
 ################################################################################
 # transmission functions
@@ -340,7 +353,7 @@ def tick2host_transmission(tick, host, transmission_probabilities, host_type=Non
     # for uniform fitness
     if uniform_fitness == True:
       for strain in tick_transmission_community:
-        if random.random() < 0.7:
+        if random.random() < transmission_probabilities.get(strain['variant']):
           transmitted_strains.append(strain)
       return transmitted_strains
 

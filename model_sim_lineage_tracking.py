@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(
     description='Vector borne pathogen evolution simulation'
     ' \n', formatter_class=RawTextHelpFormatter)
 
-parser.add_argument('-mode', type=int, help='1: cross reactivity, 2: host specialization, 3:random fitness, 4: uniform fitness value\n')
+parser.add_argument('-mode', type=int, help='1: cross reactivity, 2: host specialization, 3: uniform fitness\n')
 parser.add_argument('-antigen_length', type=int, help='size of bit string representing antigen')
 parser.add_argument('-mut', type=float, default=0.01, help='per site mutation rate in antigen')
 parser.add_argument('-vector_pop_size', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
@@ -28,6 +28,7 @@ mutation_rate = args.mut
 recombination_rate = args.recomb_rate
 transmission_curve = 'sigmoid' # choose sigmoid or linear
 sim_years = args.years
+
 if args.mode == 1:
   cross_reactivity = True
   host_specialization = False
@@ -37,10 +38,6 @@ if args.mode == 2:
   host_specialization = True
   uniform_fitness = False
 if args.mode == 3:
-  cross_reactivity = False
-  host_specialization = False
-  uniform_fitness = False
-if args.mode == 4:
   cross_reactivity = False
   host_specialization = False
   uniform_fitness = True
@@ -67,9 +64,9 @@ hosts = be.Host(host_pop_size, host_specialization)
 if cross_reactivity == True:
   probabilities = be.distance_probabilities(list(range(antigen_length+1)), curve= transmission_curve)
 if host_specialization == True:
-  mnp_values = be.mnp_probabilities(ticks.strain_set)
+  mnp_values = be.mnp_probability(ticks.strain_set)
   mnp_values2 = {item['strain']: {'mnp_value': item['mnp_value'], 'rodent': item['rodent'], 'bird': item['bird']} for item in mnp_values}
-if cross_reactivity == False and host_specialization == False:
+if uniform_fitness == True:
   fitness_values = dict(zip(ticks.strain_set, np.round(np.random.uniform(0.0, 1.0, len(ticks.strain_set)),4)))
 
 
@@ -101,6 +98,9 @@ for year in tqdm(range(sim_years)):
 
   # sim through the days of the year
   for day in range(1, 151):
+
+    # refresh the host pop for births and deaths
+    hosts.refresh(day)
 
     # iterate through interactions to see if there is a bite for current day
     for j in range(len(interactions)):
@@ -137,7 +137,7 @@ for year in tqdm(range(sim_years)):
 
   # update populations
   ticks.update_pop()
-  hosts = be.Host(host_pop_size, host_specialization)
+  #hosts = be.Host(host_pop_size, host_specialization)
 
   # collect data
   unique_lineage_ids = set()
