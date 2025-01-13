@@ -110,7 +110,7 @@ class Vector:
         tick_pop.append({'id': id, 'stage': 'nymph', 'strains': []})
       else:
         variant = random.choice(self.current_strains)
-        tick_pop.append({'id': id, 'stage': 'nymph', 'strains': [{'lineage_id': lin_id,'variant':variant,'history': [variant]}]})
+        tick_pop.append({'id': id, 'stage': 'nymph', 'strains': [{'lineage_id': lin_id,'variant':variant,'history': [variant], 'time': [0]}]})
         lin_id += 1
 
     # create larva
@@ -283,6 +283,7 @@ class Vector:
           # update ticks strains to reflect recombination events
           if new_strain != strain['variant']:
             tick['strains'][j]['history'].append(new_strain) # update history
+            tick['strains'][j]['time'].append(self.year)
           tick['strains'][j]['variant'] = new_strain # recombined strain replaces parent strain
 
 
@@ -303,6 +304,7 @@ class Vector:
           mutated_string = ''.join(new_string)
           if mutated_string != variant:
             temp_strain_set[j]['history'].append(mutated_string)
+            temp_strain_set[j]['time'].append(self.year)
           temp_strain_set[j]['variant'] = mutated_string
         self.pop[i]['strains'] = temp_strain_set
       else:
