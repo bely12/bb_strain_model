@@ -12,14 +12,12 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('-mode', type=int, help='1: cross reactivity, 2: host specialization, 3: uniform fitness\n')
 parser.add_argument('-antigen_length', type=int, help='size of bit string representing antigen')
-parser.add_argument('-mut', type=float, default=0.01, help='per site mutation rate in antigen')
 parser.add_argument('-vector_pop_size', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
 parser.add_argument('-years', type=int, help='number of years to simulate')
-parser.add_argument('-plots', default=None, help='set to True if you want plots as output; specify file namein args.plot_file')
+parser.add_argument('-mut', type=float, default=0.01, help='per site mutation rate in antigen')
 parser.add_argument('-recomb_rate', type=float, default = 0.01, help = 'recombination rate')
 parser.add_argument('-out', default=None, help='prefix for output file')
 parser.add_argument('-run_tag', default = 1, help='unique id for each sim run when doing batch')
-parser.add_argument('-batch_runs', default=None, type=int, help='number of simulations to run')
 args = parser.parse_args()
 
 ##### set key parameters #####
@@ -43,7 +41,7 @@ if args.mode == 3:
   host_specialization = False
   uniform_fitness = True
 
-# print sim parameters; comment out if running batches
+# print sim parameters
 print('Parameters','\n',
       'Vector pop size: ',vector_pop_size,'\n',
       'host pop size: ', round(vector_pop_size/50),'\n',
@@ -138,7 +136,6 @@ for year in tqdm(range(sim_years)):
 
   # update populations
   ticks.update_pop()
-  #hosts = be.Host(host_pop_size, host_specialization)
 
   # collect data
   unique_lineage_ids = set()
@@ -182,6 +179,7 @@ if args.out != None:
     df.to_csv(args.out+'_sim_data.tsv', mode= 'a', sep='\t', index=False, header=False)
 
   ##### save end of sim variant frequencies to output file #####
+  # get variant counts in populaton 
   strain_pop = []
   for d in ticks.nymph_pop:
     if d['strains'] != []:
@@ -189,6 +187,7 @@ if args.out != None:
         strain_pop.append(d['strains'][i]['variant'])
   counts = dict(Counter(strain_pop))
 
+  # store in dataframe
   df_strain_pop = pd.DataFrame(counts, index=[0])
   df_strain_pop = df_strain_pop.transpose()
   df_strain_pop.rename(columns={0: 'counts'}, inplace=True)
@@ -197,6 +196,7 @@ if args.out != None:
   df_strain_pop.rename(columns={'index': 'variant'}, inplace=True)
   df_strain_pop['run_id'] = run
 
+  # write file
   if str(args.run_tag) == "1":
     df_strain_pop.to_csv(args.out+'_variant_frequencies.tsv', mode= 'w', sep='\t', index=False, header=True)
   else:
@@ -204,90 +204,38 @@ if args.out != None:
 
 
   ##### save lineage histories to output file #####
+  # grab records
   records = []
   for tick in ticks.pop:
     if tick['strains'] != []:
       for i in range(len(tick['strains'])):
         records.append({'lineage_id': tick['strains'][i]['lineage_id'], 'history': tick['strains'][i]['history'], 'time': tick['strains'][i]['time']})
-  # link variant to the year it changed
   new_records = []
   for item in records:
     new_records.append(dict(zip(item['time'], item['history'])))
 
+  # put into a dataframe
   df = pd.DataFrame(new_records)
-  # create complete set of columns for years
-  df = df.reindex(columns=range(sim_years))
-  # fill in empty rows with state of variant for that year
-  df = df.ffill(axis=1)
-  # drop all duplicate rows
-  df.drop_duplicates(inplace=True)
-  # create a column for run id and set to index
-  df['run_id'] = run
+  df = df.reindex(columns=range(sim_years)) # create complete set of columns for years
+  df = df.ffill(axis=1) # fill in empty rows with state of variant for that year
+  df.drop_duplicates(inplace=True) # drop all duplicate rows
+  df['run_id'] = run # create a column for run id and set to index
   df.set_index('run_id', inplace=True)
 
-  # going to have to change this! just write a csv and append for each run 
+  # write file
   if str(args.run_tag) == "1":
     df.to_csv(args.out+'_lineage_history.tsv', mode='a', sep='\t', index=False, header=True)
   else:
     df.to_csv(args.out+'_lineage_history.tsv', mode='a', sep='\t', index=False, header=False)
   
-  # if args.batch_runs != None:
-  #   if str(args.run_tag) == "1":
-  #     combined = df
-  #   else:
-  #     combined = pd.concat([combined, df])
-  #   if args.run_tab == args.batch_runs:
-  #     combined.to_csv(args.out+'lineage_history.tsv', mode='w', sep='\t', index=False, header=True)
-  # else:
-  #   df.to_csv(args.out+'lineage_history.tsv', mode='w', sep='\t', index=False, header=True)
-
-
-  # get final variants and their counts and frequency in the population HAVE TO ADD A COLUMN WITH RUN ID AND EITHER APPEND OR CONCAT DFS FOR RUNNING IN BATCHES!!!
-  # strain_pop = []
-  # for d in ticks.nymph_pop:
-  #   if d['strains'] != []:
-  #     for i in range(len(d['strains'])):
-  #       strain_pop.append(d['strains'][i]['variant'])
-  # counts = dict(Counter(strain_pop))
-  # df = pd.DataFrame(counts, index=[0])
-  # df = df.transpose()
-  # df.rename(columns={0:'counts'}, inplace=True)
-  # df['frequency'] = df.index.map(ticks.current_strain_frequencies).fillna('')
-  # df.reset_index(inplace=True)
-  # df.rename(columns={'index': 'variant'}, inplace=True)
-  # df['run_id'] = run
-  # if str(args.run_tag) == "1":
-  #   df.to_csv(args.out+'_final_variant_pop.tsv', mode= 'w', sep='\t', index=False, header=True)
-  # else:
-  #   df.to_csv(args.out+'_final_variant_pop.tsv', mode= 'a', sep='\t', index=False, header=False)
-
-  ### get lineage histories ### 
-  # collect histories from population
-  # records = []
-  # for tick in ticks.pop:
-  #   if tick['strains'] != []:
-  #     for i in range(len(tick['strains'])):
-  #       records.append({'lineage_id': tick['strains'][i]['lineage_id'], 'history': tick['strains'][i]['history']})
-  # history_list = []
-  # for item in records:
-  #   history_list.append(item['history'])
-  # # get unique histories only
-  # temp_history = list(map(tuple, history_list))
-  # unique_history = set(temp_history)
-  # # build into a dataframe and save
-  # df = pd.DataFrame({'trace': list(unique_history)})
-  # df2 = df['trace'].apply(pd.Series)
-  # df2['run_id'] = run
-  # df2.to_csv(args.out+'_final_variant_histories.tsv', mode= 'a', sep='\t', index=False, header=False)
-
-  ### sampled pairwise antigen distances ###
+  ##### sampled pairwise antigen distances to output file #####
   sampled_distances = random.sample(ticks.antigen_distances, 1000)
   with open(args.out + '_sampled_pairwise_antigen_dists.tsv', 'a', newline='') as file:
     writer = csv.writer(file, delimiter='\t')
     for value in sampled_distances:
       writer.writerow([run, value])
   
-  ### mnp values in final population ###  not relevant for batch
+  ##### mnp values in final population to output file ##### 
   if host_specialization == True:
     with open(args.out + '_sim_mnp_pop_values.tsv', 'w', newline='') as file:
       writer = csv.writer(file, delimiter='\t')
