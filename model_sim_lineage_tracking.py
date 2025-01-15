@@ -50,7 +50,8 @@ print('Parameters','\n',
       'cross reactivity: ', cross_reactivity,'\n',
       'host specialization: ', host_specialization,'\n',
       'uniform fitness value: ', uniform_fitness, '\n',
-      'simulated years: ', sim_years)
+      'simulated years: ', sim_years,'\n',
+      'batch progress (current run): ', args.run_tag)
 
 
 ##### initialize populations #####
