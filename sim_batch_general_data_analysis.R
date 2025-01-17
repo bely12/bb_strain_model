@@ -25,7 +25,7 @@ x <- cr_data %>%
     avg_avg_strains_carried = mean(avg_strains_carried),
     avg_unique_lineages = mean(unique_lineages)
   )
-x$selection <- 'cross_reactivity'
+x$selection <- 'cross reactivity'
 
 # get means by year for condition 2
 y <- hs_data %>%
@@ -39,7 +39,7 @@ y <- hs_data %>%
     avg_avg_strains_carried = mean(avg_strains_carried),
     avg_unique_lineages = mean(unique_lineages)
   )
-y$selection <- 'host_specialization'
+y$selection <- 'host specialization'
 
 # combine df's
 df <- bind_rows(x, y)
@@ -48,13 +48,27 @@ df_long <- df %>%
                names_to = "variable", 
                values_to = "mean_value")
 
+title.labs <- c('Active strains in population', 
+                'Mean pairwise antigen distance',
+                'Number of strains carried per tick',
+                'Simpson diversity index',
+                'Infection rate',
+                'Surviving lineages in population')
+
+names(title.labs) <- c('avg_active_strain_count',
+                       'avg_antigen_distance',
+                       'avg_avg_strains_carried',
+                       'avg_diversity',
+                       'avg_infection_rate',
+                       'avg_unique_lineages')
 # plot 
 ggplot(df_long, aes(x = year, y = mean_value, group = interaction(variable, selection), color = selection, linetype = selection)) +
   geom_line() +
+  scale_color_manual(values = c("cross reactivity" = "skyblue3", "host specialization" = "red3")) +
   #geom_point() +
-  facet_wrap(~variable, scales = "free_y", ncol = 1) +
-  theme_minimal() +
-  labs(x = "Year", y = "Mean Value", title = "cr vs hs sim data") +
+  facet_wrap(~variable, scales = "free_y", ncol = 1, labeller = labeller(variable = title.labs)) +
+  theme_bw() +
+  labs(x = "Year", y = "Mean Value", title = "Means for simulation data", subtitle = 'N = 100 simulations per condition') +
   theme(legend.position = "bottom")
 
 
