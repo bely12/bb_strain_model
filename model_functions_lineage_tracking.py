@@ -355,7 +355,8 @@ def tick2host_transmission(tick, host, transmission_probabilities, host_type=Non
     # for uniform fitness
     if uniform_fitness == True:
       for strain in tick_transmission_community:
-        if random.random() < transmission_probabilities.get(strain['variant']):
+        #if random.random() < transmission_probabilities.get(strain['variant']):
+        if random.random() < 0.5:
           transmitted_strains.append(strain)
       return transmitted_strains
 
