@@ -1,9 +1,7 @@
 # sim cluster analysis for looking at single run
 setwd('/Users/brandonely/Desktop/bb_strain_model_dev/')
 library(tidyverse)
-library(ggplot2)
 library(cluster)  
-library(Rtsne) 
 library(pheatmap)
 library(viridis) 
 library(stringdist)
@@ -13,9 +11,45 @@ library(ggdendro)
 source("sim_analysis_functions.R")
 
 # upload data 
-setwd('/Users/brandonely/Desktop/bb_strain_model_dev/new_sim_output/')
-pop_data <- read.delim('hs_len20_vec1000_yrs250_variant_frequencies.tsv', header = T, colClasses = c('character','numeric','numeric','character')) # upload
-run_pop <- pop_data %>% filter(run_id == 'run_29') # choosing a run to work with
+setwd('/Users/brandonely/Desktop/bb_strain_model_dev/new_sim_output/test_set_500yrs/')
+
+cr_data <- read.delim('cr_len20_vec1000_yrs500_variant_frequencies.tsv', header = T, colClasses = c('character','numeric','numeric','character'))
+hs_data <- read.delim('hs_len20_vec1000_yrs500_variant_frequencies.tsv', header = T, colClasses = c('character','numeric','numeric','character'))
+ctrl_data <- read.delim('ctrl_len20_vec1000_yrs500_variant_frequencies.tsv', header = F, col.names = colnames(cr_data), colClasses = c('character','numeric','numeric','character'))
+
+selected_data <- ctrl_data # set to desired data to avoid changing variable names
+
+# compute stats from sim results to inform decision on which sim to choose
+# get stats on number of variants in final pop for sim runs
+result <- selected_data %>%
+  group_by(run_id) %>%
+  tally() %>%
+  arrange(desc(n))
+mean(result$n)
+median(result$n)
+max(result$n)
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+getmode(result$n)
+
+# compute k and sil values for sim runs
+df_catcher <- list() # initialize empty list to store df for each run
+index <- 1 # set index for list collection
+for (run in unique(selected_data$run_id)) {
+  filtered_df <- selected_data %>% filter(run_id == run) # filter df for run
+  if (nrow(filtered_df) < 5) { # min number of variants, otherwise will get error 
+    next
+  }
+  df_catcher[[index]] <- batch_clustering_data(filtered_df) # collect data for run
+  index <- index+1 # set index for next round
+}
+# create df
+selected_summary <- bind_rows(df_catcher) # bind rows to create master df
+
+# start analysis for single sim run
+run_pop <- selected_data %>% filter(run_id == 'run_12') # choosing a run to work with
 
 # create binary matrix and distance matrix
 binary_matrix <- do.call(rbind, strsplit(run_pop$variant, split = ""))
@@ -38,8 +72,8 @@ sil_scores <- sapply(2:max_k, function(k) { # get sil scores for each k value
 max_sil_score <- max(sil_scores) # highest sil score
 optimal_k <- which.max(sil_scores) + 1 # final k value based on highest sil score
 clusters <- cutree(hc_result, k = optimal_k) # cut dendrogram using optimal k
-# sil <- silhouette(clusters, dist = dist_matrix) # re-compute sil score for plot
-# plot(sil) # simple plot
+#sil <- silhouette(clusters, dist = dist_matrix) # re-compute sil score for plot
+#plot(sil) # simple plot
 
 # get average within and across cluster distances 
 run_pop$cluster_label <- clusters # add cluster labels to df
@@ -52,52 +86,21 @@ ggplot(segment(dendro_data)) +
   geom_segment(aes(x = -y, y = x, xend = -yend, yend = xend)) +
   theme_minimal() +
   labs(title = "Hierarchical clustering of variants in final population", 
-       subtitle = paste("Selection: Host specialization\nk = ",optimal_k,
+       subtitle = paste("Selection: Neutral selection\nk = ",optimal_k,
                         '\nsilhouette score = ',round(x = max_sil_score,digits = 3),
                         '\nMean in cluster distance = ',in_cluster,
                         '\nMean cross cluster distance = ',cross_cluster)) +
-  theme(axis.text = element_blank(),axis.title = element_blank(),panel.grid = element_blank())
+  theme(axis.text = element_blank(),axis.title = element_blank(),panel.grid = element_blank(),
+        plot.title = element_text(size = 20),
+        plot.subtitle = element_text(size = 20))
 
-### pca analysis ###
-pca_result <- prcomp(binary_matrix_numeric, center = TRUE, scale. = F) # set to TRUE if cross reac, FALSE if host specialization --- not sure why
-pca_data <- as.data.frame(pca_result$x[, 1:2])  # First 2 components
-colnames(pca_data) <- c('PC1', 'PC2')
-pca_data$cluster <- as.factor(clusters)
-
-pal <- wes_palette("Zissou1", optimal_k, type = "continuous")
-ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster)) +
-  geom_point(show.legend = FALSE, size = 3, alpha = 0.9) +
-  labs(title = "PCA for variant clusters",
-       subtitle = 'Selection: Host specialization',
-       x = "PC1", y = "PC2") +
-  theme_bw() +
-  geom_hline(yintercept = 0, alpha = 0.5, linewidth = 0.2) +
-  geom_vline(xintercept = 0, alpha = 0.5, linewidth = 0.2) +
-  scale_fill_gradientn(colours = pal)
-
-
-### t-SNE analysis ###
-tsne_result <- Rtsne(dist_matrix, dims = 2, pca = TRUE, perplexity = 5, check_duplicates = FALSE)
-
-# combine t-SNE and cluster labels
-tsne_data <- data.frame(tsne_result$Y)
-tsne_data$cluster <- as.factor(clusters)
-pal <- wes_palette("Zissou1", optimal_k, type = "continuous")
-# Plot the t-SNE results with hierarchical clusters
-ggplot(tsne_data, aes(x = X1, y = X2, color = cluster)) +
-  geom_point(show.legend = FALSE, size = 3, alpha = 0.9) +
-  labs(title = "t-SNE for variant clusters",
-       subtitle = 'Selection: Host specialization',
-       x = "t-SNE Dimension 1", y = "t-SNE Dimension 2") +
-  theme_bw() +
-  #theme(panel.grid = element_blank(), panel.border = element_rect()) +
-  geom_hline(yintercept = 0, alpha = 0.5, linewidth = 0.2) +
-  geom_vline(xintercept = 0, alpha = 0.5, linewidth = 0.2) +
-  scale_fill_gradientn(colours = pal)
+setwd('/Users/brandonely/Desktop/bb_strain_model_dev/new_sim_output/test_set_500yrs/plots/')
+ggsave('test_set_500_ctrl_singleRun12_hcDendro.jpeg', height = 5, width = 10)
 
 # heatmap of pairwise distances with clustering
-zzz <- wes_palette("Zissou1", 20, type = "continuous")
+#zzz <- wes_palette("Zissou1", 20, type = "continuous")
 breaks_vals <- seq(0, 20, length.out = 21)
+#breaks_vals <- seq(0,16, length.out = 17)
 pheatmap(
   dist_matrix,               
   cluster_rows = hc_result,      
@@ -107,16 +110,19 @@ pheatmap(
   #color = zzz,
   breaks = breaks_vals,
   border_color = NA,
-  main = "Final population p-w antigen distances\nSelection: Host specialization",
+  #main = "Final population p-w antigen distances\nSelection: Host specialization",
   scale = "none",               
   fontsize = 8,                 
   show_rownames = FALSE,          
   show_colnames = FALSE,          
   fontsize_row = 8,              
   fontsize_col = 8,
+  filename = 'ctrl_singleRun12_heatmap.jpeg'
   #cellwidth = 3, 
   #cellheight = 3,
   #treeheight_row = 0,           
   #treeheight_col = 0
 )
+
+
 
