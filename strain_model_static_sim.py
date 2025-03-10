@@ -41,6 +41,7 @@ all_data = []
 ### start new replication ###
 for i in range(repeat):
     run_tag = run_tag + 1
+    print('working on replicate simulation ',run_tag,' out of ',repeat)
 
 ### initialize pathogen, vector, host populations ###
     patho = bb.Pathogen(n = n_strains,
