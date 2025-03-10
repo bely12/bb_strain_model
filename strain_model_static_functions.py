@@ -27,6 +27,8 @@ def assign_hs(spec_type): # assigns a single hs value
 def assign_hs_v2(spec_types): # takes a list of strain hs types; can be used to create their values within Pathogen class
   hs_vals = []
   for spec in spec_types:
+    if spec == 'any':
+      hs_val = round(random.uniform(0.0,1.0),2)
     if spec == 'generalist':
       hs_val = 0.5
     if spec == 'rodent':

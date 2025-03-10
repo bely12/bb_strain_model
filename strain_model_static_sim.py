@@ -116,6 +116,18 @@ for i in range(repeat):
 
         # update populations
         ticks.update_pop()
+        
+        #kill the sim once pop is deemed unstable
+        seen = []
+        for i in range(len(ticks.nymph_pop)):
+            if len(seen) == len(patho.strain_community):
+                break
+            if ticks.nymph_pop[i]['strains'] != []:
+                for j in range(len(ticks.nymph_pop[i]['strains'])):
+                    if ticks.nymph_pop[i]['strains'][j] not in seen:
+                        seen.append(ticks.nymph_pop[i]['strains'][j])
+        if len(seen) != len(patho.strain_community):
+            break
 
 
     # identify what strains are left after sim finishes
@@ -150,6 +162,7 @@ for i in range(repeat):
 
     # add to all data for batch run collection
     all_data.append(run_data)
+
 
 df = pd.DataFrame(all_data)
 df.to_csv(args.out+'_static_sim_results.tsv', mode= 'w', sep='\t', index=False, header=True)
