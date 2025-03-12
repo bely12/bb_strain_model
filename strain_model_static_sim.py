@@ -36,7 +36,6 @@ sim_years = args.years
 repeat = args.replicates
 
 run_tag = 0
-all_data = []
 
 ### start new replication ###
 for i in range(repeat):
@@ -160,9 +159,9 @@ for i in range(repeat):
                     'final_ant': final_sim_antigen_vals,
                     'result': result})
 
-    # add to all data for batch run collection
-    all_data.append(run_data)
-
-
-df = pd.DataFrame(all_data)
-df.to_csv(args.out+'_static_sim_results.tsv', mode= 'w', sep='\t', index=False, header=True)
+    # write results to file
+    df = pd.DataFrame([run_data])
+    if run_tag == 1:
+        df.to_csv(args.out+'_static_sim_results.tsv', mode= 'a', sep='\t', index=False, header=True)
+    else:
+        df.to_csv(args.out+'_static_sim_results.tsv', mode= 'a', sep='\t', index=False, header=False)
