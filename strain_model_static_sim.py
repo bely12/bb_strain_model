@@ -17,7 +17,7 @@ parser.add_argument('-spec_types', type=list_of_strings)
 parser.add_argument('-vector_pop_size', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
 parser.add_argument('-rodent_pop_size', type=int, help='number of rodents in host pop')
 parser.add_argument('-bird_pop_size', type=int, help='number of birds in host pop')
-parser.add_argument('-lam', default=0.7, help='infection rate lambda val for poisson distribution')
+parser.add_argument('-lam',type=float, default=0.5, help='infection rate lambda val for poisson distribution')
 
 parser.add_argument('-years', type=int, help='number of years to simulate')
 #parser.add_argument('-replicates', type=int, default=1, help='number of times to run sim with specified conditions')
