@@ -67,13 +67,16 @@ for i in range(repeat):
     if n_strains == 3:
         antigen_variation = round(bb.dispersion(sim_antigen_vals),2)
 
+    spec_weight_val = bb.spec_weight(patho.strain_community)
+
     run_data = {'run_tag': run_tag,
             'v_pop': vector_pop_size,
             'rodent_pop': rodent_pop_size,
             'bird_pop': bird_pop_size,
             'hs_vals': sim_hs_vals,
             'antigen_vals': sim_antigen_vals,
-            'antigen_variation': antigen_variation}
+            'antigen_variation': antigen_variation,
+            'spec_weight': spec_weight_val}
 
 
     ### start sim ###

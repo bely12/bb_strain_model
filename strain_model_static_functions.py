@@ -58,6 +58,12 @@ def dispersion(antigen_value_list): # this only works correctly for 3 strains!
     all_dists.append(antigen_distance(pair[0], pair[1]))
   return sum(all_dists)
 
+def spec_weight(pathogens):
+  vals = []
+  for i in range(len(pathogens)):
+    vals.append(((pathogens[i]['hs'] - 0.5)**2)/3)
+  return round(math.sqrt(sum(vals)),2)
+
 def transmission_probability(strain, host):
   dists = []
   for i in range(len(host['infections'])):
