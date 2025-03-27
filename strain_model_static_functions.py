@@ -35,6 +35,15 @@ def assign_hs_v2(spec_types): # takes a list of strain hs types; can be used to 
       hs_val = round(random.uniform(0.51, 1.0),2)
     if spec == 'bird':
       hs_val = round(random.uniform(0.0, 0.49),2)
+    
+    if spec == 'spec_bias': 
+      if random.random() <= 0.5:
+        hs_val = round(random.uniform(0.0,0.2),2)
+      else:
+        hs_val = round(random.uniform(0.8,1.0),2)
+    if spec == 'gen_bias':
+      hs_val = round(random.uniform(0.4, 0.6),2)
+    
     hs_vals.append(hs_val)
   return hs_vals
 
