@@ -13,7 +13,7 @@ parser.add_argument('-n_strains', type=int, help='how many strains in the commun
 def list_of_strings(arg):
     return arg.split(',')
 parser.add_argument('-spec_types', type=list_of_strings)
-parser.add_argument('-manual_antigens', default=False, help='set to True if you want to input manual antigen values for n strains')
+parser.add_argument('-manual_antigens', default='off', help='set to True if you want to input manual antigen values for n strains')
 parser.add_argument('-antigen_vals', default=None, type=list_of_strings, help='if manual_antigens set to True, this is list of values, enter as integers sep by a comma')
 
 parser.add_argument('-vector_pop_size', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')

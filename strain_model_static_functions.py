@@ -47,12 +47,12 @@ def assign_hs_v2(spec_types): # takes a list of strain hs types; can be used to 
     hs_vals.append(hs_val)
   return hs_vals
 
-def assign_antigen(n, manual = False, vals = None): # assigns antigens randomly to each strain being created; use when creating Pathogen class
+def assign_antigen(n, manual = 'off', vals = None): # assigns antigens randomly to each strain being created; use when creating Pathogen class
   antigen_vals = []
   for i in range(n):
-    if manual == False:
+    if manual == 'off':
       antigen_vals.append(round(random.uniform(0.0, 2.0),2))
-    else:
+    if manual == 'on':
       antigen_vals.append(int(vals[n]))
   return antigen_vals
 
