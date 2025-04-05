@@ -53,7 +53,7 @@ def assign_antigen(n, manual = 'off', vals = None): # assigns antigens randomly 
     if manual == 'off':
       antigen_vals.append(round(random.uniform(0.0, 2.0),2))
     if manual == 'on':
-      antigen_vals.append(int(vals[n]))
+      antigen_vals.append(int(vals[i]))
   return antigen_vals
 
 def antigen_distance(antigen1, antigen2):
