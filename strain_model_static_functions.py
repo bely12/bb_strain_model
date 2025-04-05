@@ -42,15 +42,18 @@ def assign_hs_v2(spec_types): # takes a list of strain hs types; can be used to 
       else:
         hs_val = round(random.uniform(0.9,1.0),2)
     if spec == 'gen_bias':
-      hs_val = round(random.uniform(0.45, 0.55),2)
+      hs_val = round(random.uniform(0.48, 0.52),2)
     
     hs_vals.append(hs_val)
   return hs_vals
 
-def assign_antigen(n): # assigns antigens randomly to each strain being created; use when creating Pathogen class
+def assign_antigen(n, manual = False, vals = None): # assigns antigens randomly to each strain being created; use when creating Pathogen class
   antigen_vals = []
   for i in range(n):
-    antigen_vals.append(round(random.uniform(0.0, 2.0),2))
+    if manual == False:
+      antigen_vals.append(round(random.uniform(0.0, 2.0),2))
+    else:
+      antigen_vals.append(int(vals[n]))
   return antigen_vals
 
 def antigen_distance(antigen1, antigen2):

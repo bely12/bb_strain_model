@@ -13,6 +13,8 @@ parser.add_argument('-n_strains', type=int, help='how many strains in the commun
 def list_of_strings(arg):
     return arg.split(',')
 parser.add_argument('-spec_types', type=list_of_strings)
+parser.add_argument('-manual_antigens', default=False, help='set to True if you want to input manual antigen values for n strains')
+parser.add_argument('-antigen_vals', default=None, type=list_of_strings, help='if manual_antigens set to True, this is list of values, enter as integers sep by a comma')
 
 parser.add_argument('-vector_pop_size', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
 parser.add_argument('-rodent_pop_size', type=int, help='number of rodents in host pop')
@@ -35,6 +37,8 @@ vector_pop_size = args.vector_pop_size
 rodent_pop_size = args.rodent_pop_size
 bird_pop_size = args.bird_pop_size
 sim_years = args.years
+manual_antigens = args.manual_antigens
+antigen_vals = args.antigen_vals
 #repeat = args.replicates
 #run_tag = args.run_tag
 print('working on replicate simulation ',args.run_tag)
@@ -47,7 +51,7 @@ print('working on replicate simulation ',args.run_tag)
 ### initialize pathogen, vector, host populations ###
 patho = bb.Pathogen(n = n_strains,
             hs = bb.assign_hs_v2(spec_types),
-            antigen = bb.assign_antigen(n_strains))
+            antigen = bb.assign_antigen(n=n_strains, manual=manual_antigens, vals=antigen_vals))
 
 ticks = bb.Vector(pop_size=vector_pop_size,
                 strains=patho.strain_community,
