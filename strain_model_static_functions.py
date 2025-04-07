@@ -46,7 +46,7 @@ def assign_hs_v2(spec_types): # takes a list of strain hs types; can be used to 
       hs_val = round(random.uniform(0.48, 0.52),2)
     
     # or if complete manual control is needed
-    if type(spec) != 'string':
+    if type(spec) != str:
       hs_val = float(spec)
     
     hs_vals.append(hs_val)
