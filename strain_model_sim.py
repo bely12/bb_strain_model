@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import model_functions_lineage_tracking as be
+import strain_model_functions as be
 from tqdm import tqdm
 import argparse
 from argparse import RawTextHelpFormatter
