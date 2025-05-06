@@ -107,11 +107,77 @@ batch_clustering_data <- function(data) {
   in_dist <- InGroupDistance(data) # in cluster distance
   out_dist <- OutGroupDistance(data) # cross cluster distance
   
+  data$cluster_label <- clusters
+  x <- data %>%
+    group_by(cluster_label) %>%
+    summarise(
+      totals = sum(counts)
+    )
+  x$freq <- x$totals/sum(x$totals) * 100
+  H <- diversity(x$freq, index = "shannon", base = exp(1))  
+  N <- sum(x$freq > 0)
+  E <- H / log(N)
+  
   return(data.frame(
-    rund_id=data$run_id[1],
+    run_id=data$run_id[1],
     n_variants= nrow(data),
     sil_score=max_sil_score, 
     k_clusters=optimal_k, 
     avg_in_dist=in_dist, 
-    avg_out_dist=out_dist))
+    avg_out_dist=out_dist,
+    shanD = H,
+    ShanE = E))
+}
+
+# single run clustering; returns a list of 3 items: 1-df of cluster summary stats, 2-dist object 3-cluster res, 4-freq table for clusters 
+single_run_clustering <- function(data) {
+  
+  # create binary matrix and distance matrix
+  binary_matrix <- do.call(rbind, strsplit(data$variant, split = ""))
+  binary_matrix_str <- apply(binary_matrix, 1, paste, collapse = "")
+  binary_matrix_numeric <- matrix(as.numeric(binary_matrix), nrow = nrow(binary_matrix), ncol = ncol(binary_matrix))
+  dist_matrix <- stringdistmatrix(binary_matrix_str, binary_matrix_str, method = "hamming")
+  dist_obj <- as.dist(dist_matrix) # convert to a distance object, required for hclust function 
+  
+  hc_result <- hclust(dist_obj, method = "complete") # perform clustering
+  max_k <- length(binary_matrix_str) -1 # set total number of clusters allowed, set to n-1
+  
+  sil_scores <- sapply(2:max_k, function(k) { # get sil scores for each k value
+    clusters <- cutree(hc_result, k)
+    sil <- silhouette(clusters, dist_matrix)
+    mean(sil[, 3])
+  })
+  
+  # define all data to be collected and return as a df
+  max_sil_score <- max(sil_scores) # highest sil score
+  optimal_k <- which.max(sil_scores) + 1 # final k value based on highest sil score
+  clusters <- cutree(hc_result, k = optimal_k) # cut dendrogram using optimal k
+  data$cluster_label <- clusters # add cluster labels to df
+  in_dist <- InGroupDistance(data) # in cluster distance
+  out_dist <- OutGroupDistance(data) # cross cluster distance
+  
+  #data$cluster_label <- clusters
+  w <- data %>% select(variant, cluster_label,counts, frequency)
+  
+  x <- data %>%
+    group_by(cluster_label) %>%
+    summarise(
+      totals = sum(counts)
+    )
+  x$freq <- x$totals/sum(x$totals) * 100
+  H <- diversity(x$freq, index = "shannon", base = exp(1))  
+  N <- sum(x$freq > 0)
+  E <- H / log(N)
+  
+  df <- data.frame(
+    run_id=data$run_id[1],
+    n_variants= nrow(data),
+    sil_score=max_sil_score, 
+    k_clusters=optimal_k, 
+    avg_in_dist=in_dist, 
+    avg_out_dist=out_dist,
+    shanD = H,
+    ShanE = E)
+  
+  return(list('stats_df' = df, 'dist_matrix' = dist_obj, 'cluster_res' = hc_result, 'freq_table' = x, 'variant_cluster_labels' = w))
 }
