@@ -158,8 +158,6 @@ class Vector:
     self.strain_set_frequencies = frequencies
 
     self.avg_gen_dist = 0.0
-    self.antigen_distances = [] # creating an empty list here so I can append in the update_pop() function with antigen distances
-
 
   ## function molts larva to nymphs and hatches new nymphs; current nymphs age out to adults and are not included in sim
   def update_pop(self):
@@ -214,21 +212,39 @@ class Vector:
     self.current_strain_count = len(self.current_strains)
     self.current_strain_frequencies = frequencies.copy()
 
+#******************************** turned off *********************************
     # add strains not present and assign freq as 0, define as attribute
-    for item in self.strain_set:
-      if item not in frequencies:
-        frequencies[item] = 0.0
-    self.strain_set_frequencies = frequencies
+    # for item in self.strain_set:
+    #   if item not in frequencies:
+    #     frequencies[item] = 0.0
+    # self.strain_set_frequencies = frequencies
 
-    # collect antigen distances and also get avg for generation
+  def sample(self):
+    # step 1 - get 100 infected ticks
+    infected_ticks = [d for d in self.nymph_pop if len(d['strains']) != 0]
+    
+    # step 2 - sample the ticks and get all strains they carry
+    if len(infected_ticks) < 100:
+      sampled_ticks = infected_ticks
+    else:
+      sampled_ticks = random.sample(infected_ticks, 100)
+    self.sampled_ticks = sampled_ticks
+    sampled_strains = []
+    for d in sampled_ticks:
+      for i in range(len(d['strains'])):
+        sampled_strains.append(d['strains'][i]['variant'])
+    self.sampled_strains = sampled_strains
+    
+    # step 3 compute antigen distances and save
     generation_distances = []
-    for i in range(len(strain_pop)):
-      for j in range(len(strain_pop)):
+    for i in range(len(sampled_strains)):
+      for j in range(len(sampled_strains)):
         if i != j:
-          dist = hamming_distance(strain_pop[i], strain_pop[j])
-          self.antigen_distances.append(dist)
+          dist = hamming_distance(sampled_strains[i], sampled_strains[j])
+          #self.antigen_distances.append(dist)
           generation_distances.append(dist)
     self.avg_gen_dist = round(np.mean(generation_distances),3)
+    self.generation_distances = generation_distances
 
   # function assigns a host for each tick to bite and the day/s it bites on
   def interaction(self, hosts):

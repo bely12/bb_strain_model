@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import strain_model_functions as be
+import test_strain_model_functions as be
 from tqdm import tqdm
 import argparse
 from argparse import RawTextHelpFormatter
@@ -53,12 +53,10 @@ print('Parameters','\n',
       'simulated years: ', sim_years,'\n',
       'batch progress (current run): ', args.run_tag)
 
-
 ##### initialize populations #####
 ticks = be.Vector(pop_size= vector_pop_size, n_strains= 1, strain_length= antigen_length, lam= 0.5)
 host_pop_size = round(len(ticks.pop)/50)
 hosts = be.Host(host_pop_size, host_specialization)
-
 
 ##### create transmission probability tables #####
 if cross_reactivity == True:
@@ -68,7 +66,6 @@ if host_specialization == True:
   mnp_values2 = {item['strain']: {'mnp_value': item['mnp_value'], 'rodent': item['rodent'], 'bird': item['bird']} for item in mnp_values}
 if uniform_fitness == True:
   fitness_values = dict(zip(ticks.strain_set, np.round(np.random.uniform(0.0, 1.0, len(ticks.strain_set)),4)))
-
 
 ##### initialize data collection #####
 unique_lineage_ids = set()
@@ -88,11 +85,11 @@ all_data = [{'run_tag': args.run_tag,
 if host_specialization == True:
   mnp_container = [ticks.mnp_recs(mnp_values2)]
 
-
 ########## sim ##########
 
 #for year in range(sim_years):
 for year in tqdm(range(sim_years)):
+  
   # set tick/host interactions for the year
   interactions = ticks.interaction(hosts.pop)
 
@@ -109,26 +106,26 @@ for year in tqdm(range(sim_years)):
         # find the host and tick involved in interaction
         current_host = next((item for item in hosts.pop if item["id"] == interactions[j]['host_id']), None)
         current_tick = next((item for item in ticks.pop if item["id"] == interactions[j]['tick_id']), None)
-
+        
         # determine strains to be transmitted from tick to host
         if cross_reactivity == True:
           strains_from_tick = be.tick2host_transmission(tick=current_tick, host=current_host, transmission_probabilities=probabilities, cross_reactivity= True)
-
+  
         if host_specialization == True:
           strains_from_tick = be.tick2host_transmission(tick=current_tick, host=current_host, host_type= current_host['host_type'], transmission_probabilities=mnp_values2, host_specialization=True)
 
         if uniform_fitness == True:
           strains_from_tick = be.tick2host_transmission(tick=current_tick, host=current_host, transmission_probabilities=fitness_values ,uniform_fitness=True)
-
+        
         # determine strains to be transmitted from host to tick
         strains_from_host = be.host2tick_transmission(current_host)
-
+        
         # update host infection community
         for item in hosts.pop:
           if item["id"] == current_host['id']:
             item["infections"] = current_host['infections'] + [item for item in strains_from_tick if (item not in current_host['infections'])]
             break
-
+        
         # update tick infection community
         for item in ticks.pop:
           if item['id'] == current_tick['id']:
@@ -137,6 +134,9 @@ for year in tqdm(range(sim_years)):
 
   # update populations
   ticks.update_pop()
+  
+  # sampling for pairwise antigen distances and variant frequencies
+  ticks.sample()
 
   # collect data
   unique_lineage_ids = set()
@@ -160,8 +160,6 @@ for year in tqdm(range(sim_years)):
   if year+1 != sim_years:
     ticks.mutate(rate = args.mut)
     ticks.recombination(rate = args.recomb_rate)
-
-
 
 
 ##### data output #####
@@ -204,6 +202,25 @@ if args.out != None:
     df_strain_pop.to_csv(args.out+'_variant_frequencies.tsv', mode= 'a', sep='\t', index=False, header=False)
 
 
+  ##### save SAMPLED strain counts and frequencies to output file #####
+  strain_counts = dict(Counter(ticks.sampled_strains))
+  my_dict = []
+  for strain in strain_counts:
+    my_dict.append({'strain': strain, 'count': strain_counts[strain], 'freq': round(strain_counts[strain]/len(ticks.sampled_strains)*100,2)})
+  df_sampled_strains = pd.DataFrame(my_dict)
+  df_sampled_strains['run_id'] = run
+  if str(args.run_tag) == "1":
+    df_sampled_strains.to_csv(args.out+'_sampled_variant_frequencies.tsv', mode= 'w', sep='\t', index=False, header=True)
+  else:
+    df_sampled_strains.to_csv(args.out+'_sampled_variant_frequencies.tsv', mode= 'a', sep='\t', index=False, header=False)
+  
+
+  ##### save sampled pairwise antigen distances #####
+  with open(args.out + '_sampled_pairwise_antigen_dists.tsv', 'a', newline='') as file:
+    writer = csv.writer(file, delimiter='\t')
+    for value in ticks.generation_distances:
+      writer.writerow([run, value])
+
   ##### save lineage histories to output file #####
   # grab records
   records = []
@@ -229,16 +246,10 @@ if args.out != None:
   else:
     df.to_csv(args.out+'_lineage_history.tsv', mode='a', sep='\t', index=False, header=False)
   
-  ##### sampled pairwise antigen distances to output file #####
-  sampled_distances = random.sample(ticks.antigen_distances, 1000)
-  with open(args.out + '_sampled_pairwise_antigen_dists.tsv', 'a', newline='') as file:
-    writer = csv.writer(file, delimiter='\t')
-    for value in sampled_distances:
-      writer.writerow([run, value])
-  
+
   ##### mnp values in final population to output file ##### 
   if host_specialization == True:
-    with open(args.out + '_sim_mnp_pop_values.tsv', 'w', newline='') as file:
+    with open(args.out + '_sim_mnp_pop_values.tsv', 'a', newline='') as file:
       writer = csv.writer(file, delimiter='\t')
       for value in mnp_container[-1]:
         writer.writerow([run, value])
