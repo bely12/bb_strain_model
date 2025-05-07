@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import test_strain_model_functions as be
+import strain_model_functions as be
 from tqdm import tqdm
 import argparse
 from argparse import RawTextHelpFormatter
