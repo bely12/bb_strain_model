@@ -8,12 +8,16 @@ library(stringdist)
 library(ggdendro)
 library(vegan)
 library(RColorBrewer)
+library(igraph)
 source("sim_analysis_functions.R")
 
 ### UPLOAD DATA
-setwd('/Users/brandonely/Desktop/bb_strain_model_dev/sim_results/results/')
+setwd('/Users/brandonely/Desktop/bb_strain_model_dev/sim_results/v5000_yrs500_results/')
 header <- c('variant', 'counts', 'frequency', 'run_id')
-data <- read.delim('hs_5000_20_500_25SET_sampled_variant_frequencies.tsv', header = T, col.names = header, colClasses = c('character','numeric','numeric','character'))
+#data <- read.delim('neutral_5000_20_500_25SET_sampled_variant_frequencies.tsv', header = T, col.names = header, colClasses = c('character','numeric','numeric','character'))
+data <- read.delim('immune_5000_20_500_25SET_variant_frequencies.tsv', header = T, col.names = header, colClasses = c('character','numeric','numeric','character'))
+data_neutral <- read.delim('neutral_5000_20_500_25SET_sampled_variant_frequencies.tsv', header = T, col.names = header, colClasses = c('character','numeric','numeric','character'))
+data_adaptive <- read.delim('hs_5000_20_500_25SET_sampled_variant_frequencies.tsv', header = T, col.names = header, colClasses = c('character','numeric','numeric','character'))
 
 
 ### CHOOSING A SINGLE RUN TO SHOW CLUSTERING RESULTS FOR
@@ -62,7 +66,9 @@ typical_runs <- summary_df %>% filter(sil_score > (summary_df_stats$mean_sil[1] 
 
 
 ### RUN CLUSTER ANALYSIS ON SELECTED RUN
-run_pop <- data %>% filter(run_id == 'run_20') # choose a run to work
+selected_run <- typical_runs[sample(nrow(typical_runs), 1), ]
+cat('chosen run id:',selected_run$run_id)
+run_pop <- data %>% filter(run_id == selected_run$run_id) # choose a run to work
 cluster_results <- single_run_clustering(run_pop) # execute with homemade function 
 
 ### PLOT DENDROGRAM
@@ -71,7 +77,7 @@ ggplot(segment(dendro_data)) +
   geom_segment(aes(x = -y, y = x, xend = -yend, yend = xend)) +
   theme_minimal() +
   labs(title = "Hierarchical clustering of variants in final population", 
-       subtitle = paste("Selection: ___\nk = ",cluster_results$stats_df$k_clusters,
+       subtitle = paste("Selection: neutral\nk = ",cluster_results$stats_df$k_clusters,
          '\nsilhouette score = ',round(x = cluster_results$stats_df$sil_score,digits = 3),
          '\nMean in cluster distance = ',cluster_results$stats_df$avg_in_dist,
          '\nMean cross cluster distance = ',cluster_results$stats_df$avg_out_dist)) +
@@ -79,8 +85,8 @@ ggplot(segment(dendro_data)) +
         plot.title = element_text(size = 20),
         plot.subtitle = element_text(size = 20))
 
-#setwd('/Users/brandonely/Desktop/bb_strain_model_dev/new_sim_output/test_set_500yrs/plots/')
-#ggsave('test_set_500_ctrl_singleRun12_hcDendro.jpeg', height = 5, width = 10)
+#setwd('/Users/brandonely/Desktop/bb_strain_model_dev/sim_results/v5000_yrs500_results/plots/')
+#ggsave('neutral_25set_run15_hcDendro.jpeg', height = 5, width = 10)
 
 
 ### MAKE HEATMAP
@@ -97,7 +103,13 @@ annot_rows <- annot_rows %>% select(-1)
 
 # set colors for annotation
 clusters <- sort(unique(annot_rows$cluster_label))
-cluster_colors <- setNames(brewer.pal(length(clusters), "Set1"), clusters)
+#cluster_colors <- setNames(brewer.pal(length(clusters), "Set3"), clusters)
+cluster_colors <- unique(c(
+  brewer.pal(9, "Set1"),
+  brewer.pal(8, "Set2"),
+  brewer.pal(12, "Set3"),
+  brewer.pal(8, "Dark2")
+))[1:31]
 annotation_colors <- list(cluster_label = cluster_colors)
 
 breaks_vals <- seq(0, 20, length.out = 21)
@@ -116,6 +128,8 @@ pheatmap(
   border_color = NA,
   treeheight_col = 0,
   show_rownames = F,          
-  show_colnames = F)          
-  #filename = 'ctrl_singleRun12_heatmap.jpeg'
+  show_colnames = F,         
+  #filename = 'neutral_25set_run15_heatmap.jpeg',
+  width = 5,
+  height = 5)
 

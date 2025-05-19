@@ -114,7 +114,7 @@ batch_clustering_data <- function(data) {
       totals = sum(counts)
     )
   x$freq <- x$totals/sum(x$totals) * 100
-  H <- diversity(x$freq, index = "shannon", base = exp(1))  
+  H <- vegan::diversity(x$freq, index = "shannon", base = exp(1))  
   N <- sum(x$freq > 0)
   E <- H / log(N)
   
@@ -125,12 +125,11 @@ batch_clustering_data <- function(data) {
     k_clusters=optimal_k, 
     avg_in_dist=in_dist, 
     avg_out_dist=out_dist,
-    shanD = H,
     ShanE = E))
 }
 
 # single run clustering; returns a list of 3 items: 1-df of cluster summary stats, 2-dist object 3-cluster res, 4-freq table for clusters 
-single_run_clustering <- function(data) {
+single_run_clustering <- function(data, strict = 'no', threshold = 2) {
   
   # create binary matrix and distance matrix
   binary_matrix <- do.call(rbind, strsplit(data$variant, split = ""))
@@ -151,7 +150,16 @@ single_run_clustering <- function(data) {
   # define all data to be collected and return as a df
   max_sil_score <- max(sil_scores) # highest sil score
   optimal_k <- which.max(sil_scores) + 1 # final k value based on highest sil score
-  clusters <- cutree(hc_result, k = optimal_k) # cut dendrogram using optimal k
+  
+  ### just added - not sure I would use this it doesn't seem to work the intended way
+  if (strict == 'yes') {
+    clusters <- cutree(hc_result, h = threshold)
+  } else {
+    clusters <- cutree(hc_result, k = optimal_k)
+  }
+  ###
+  
+  #clusters <- cutree(hc_result, k = optimal_k) # cut dendrogram using optimal k
   data$cluster_label <- clusters # add cluster labels to df
   in_dist <- InGroupDistance(data) # in cluster distance
   out_dist <- OutGroupDistance(data) # cross cluster distance
@@ -176,8 +184,67 @@ single_run_clustering <- function(data) {
     k_clusters=optimal_k, 
     avg_in_dist=in_dist, 
     avg_out_dist=out_dist,
-    shanD = H,
     ShanE = E)
   
   return(list('stats_df' = df, 'dist_matrix' = dist_obj, 'cluster_res' = hc_result, 'freq_table' = x, 'variant_cluster_labels' = w))
+}
+
+# network analysis
+antigen_network <- function(data, threshold) {
+  # assign edges 
+  edges <- c()
+  for (i in 1:(nrow(data)- 1)) {
+    for (j in (i +1):nrow(data)) {
+      dist <- hamming_distance(data$variant[i], data$variant[j])
+      if (dist <= threshold) {
+        edges <- c(edges, data$variant[i], data$variant[j])
+      }
+    }
+  }
+  
+  # contstruct the network
+  g <- make_graph(edges, directed = FALSE)
+  
+  # compute metrics and store in df
+  comm <- cluster_louvain(g)
+  return(data.frame(run_id = data$run_id[1],
+                    threshold = threshold,
+                    edge_dens = edge_density(g),
+                    mean_degree = mean(degree(g)),
+                    clust_coef = transitivity(g, type = "global"),
+                    diam = diameter(g, directed = FALSE, unconnected = TRUE),
+                    mean_dist = mean_distance(g, directed = FALSE, unconnected = TRUE),
+                    modul = modularity(comm)))
+}
+
+# visualize antigen network
+antigen_network_viz <- function(data, threshold) {
+  # assign edges 
+  edges <- c()
+  for (i in 1:(nrow(data)- 1)) {
+    for (j in (i +1):nrow(data)) {
+      dist <- hamming_distance(data$variant[i], data$variant[j])
+      if (dist <= threshold) {
+        edges <- c(edges, data$variant[i], data$variant[j])
+      }
+    }
+  }
+  
+  # contstruct the network
+  g <- make_graph(edges, directed = FALSE)
+  
+  # set size and color of nodes according to frequency of variants
+  V(g)$frequency <- data$frequency[match(V(g)$name, data$variant)]
+  V(g)$size <- log1p(V(g)$frequency) * 5 
+  freqs <- V(g)$frequency
+  palette_func <- colorRampPalette(c("lightblue", "darkred"))
+  colors <- palette_func(100)
+  freq_scaled <- as.integer( (freqs - min(freqs)) / (max(freqs) - min(freqs)) * 99 ) + 1
+  V(g)$color <- colors[freq_scaled]
+  
+  # plot
+  return(plot(g,
+              vertex.label = NA,
+              vertex.frame.color = "gray30",
+              layout = layout_with_fr))
 }
