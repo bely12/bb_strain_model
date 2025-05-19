@@ -15,14 +15,14 @@ def hamming_distance(string1, string2):
           distance += 1
   return distance
 
-def assign_hs(spec_type): # assigns a single hs value
-  if spec_type == 'generalist':
-    hs_val = 0.5
-  if spec_type == 'rodent':
-    hs_val = random.uniform(0.51, 1.0)
-  if spec_type == 'bird':
-    hs_val = random.uniform(0.0, 0.49)
-  return round(hs_val, 2)
+# def assign_hs(spec_type): # assigns a single hs value
+#   if spec_type == 'generalist':
+#     hs_val = 0.5
+#   if spec_type == 'rodent':
+#     hs_val = random.uniform(0.51, 1.0)
+#   if spec_type == 'bird':
+#     hs_val = random.uniform(0.0, 0.49)
+#   return round(hs_val, 2)
 
 def assign_hs_v2(spec_types): # takes a list of strain hs types; can be used to create their values within Pathogen class
   hs_vals = []
@@ -52,28 +52,28 @@ def assign_hs_v2(spec_types): # takes a list of strain hs types; can be used to 
     hs_vals.append(hs_val)
   return hs_vals
 
-def assign_antigen(n, manual = 'off', vals = None): # assigns antigens randomly to each strain being created; use when creating Pathogen class
+def assign_antigen(n, size = 2.0, manual = 'off', vals = None): # assigns antigens randomly to each strain being created; use when creating Pathogen class
   antigen_vals = []
   for i in range(n):
     if manual == 'off':
-      antigen_vals.append(round(random.uniform(0.0, 2.0),2))
+      antigen_vals.append(round(random.uniform(0.0, size),2))
     if manual == 'on':
       antigen_vals.append(float(vals[i]))
   return antigen_vals
 
-def antigen_distance(antigen1, antigen2):
+def antigen_distance(antigen1, antigen2, size):
   lrg = max(antigen1, antigen2)
   sml = min(antigen1, antigen2)
-  dist1= sml + (2.0-lrg)
+  dist1= sml + (size-lrg)
   dist2 = lrg - sml
   return min(dist1, dist2)
 
-def dispersion(antigen_value_list): # this only works correctly for 3 strains!
-  all_dists = []
-  combos = list(itertools.combinations(antigen_value_list, 2))
-  for pair in combos:
-    all_dists.append(antigen_distance(pair[0], pair[1]))
-  return sum(all_dists)
+# def dispersion(antigen_value_list): # this only works correctly for 3 strains!
+#   all_dists = []
+#   combos = list(itertools.combinations(antigen_value_list, 2))
+#   for pair in combos:
+#     all_dists.append(antigen_distance(pair[0], pair[1]))
+#   return sum(all_dists)
 
 def spec_weight(pathogens):
   vals = []
@@ -81,18 +81,18 @@ def spec_weight(pathogens):
     vals.append(((pathogens[i]['hs'] - 0.5)**2)/3)
   return round(math.sqrt(sum(vals)),2)
 
-def transmission_probability(strain, host):
+def transmission_probability(strain, host, size):
   dists = []
   for i in range(len(host['infections'])):
-    dists.append(antigen_distance(strain['antigen'], host['infections'][i]['antigen']))
+    dists.append(antigen_distance(antigen1=strain['antigen'], antigen2=host['infections'][i]['antigen'], size =size))
 
   if host['host_type'] == 'rodent':
     return (strain['hs']**2) * (1 - math.exp(-2.0 * min(dists)))
-  
+
   if host['host_type'] == 'bird':
     return (1-(strain['hs']**2)) * (1 - math.exp(-2.0 * min(dists)))
 
-def tick2host_transmission(tick, host):
+def tick2host_transmission(tick, host, size):
   # create the transmission community from tick
   if tick['strains'] == []:
     return []
@@ -116,7 +116,7 @@ def tick2host_transmission(tick, host):
 
   else:
     for strain in tick_transmission_community:
-      if random.random() < transmission_probability(strain, host):
+      if random.random() < transmission_probability(strain, host, size):
         transmitted_strains.append(strain)
     return transmitted_strains
 
