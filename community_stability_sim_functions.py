@@ -90,7 +90,7 @@ def transmission_probability(strain, host, size):
     return (strain['hs']**2) * (1 - math.exp(-2.0 * min(dists)))
 
   if host['host_type'] == 'bird':
-    return (1-(strain['hs']**2)) * (1 - math.exp(-2.0 * min(dists)))
+    return ((1-strain['hs'])**2) * (1 - math.exp(-2.0 * min(dists)))
 
 def tick2host_transmission(tick, host, size):
   # create the transmission community from tick
@@ -108,7 +108,7 @@ def tick2host_transmission(tick, host, size):
         transmission_prob = (strain['hs']**2) * (1 - math.exp(-2.0))
       
       if host['host_type'] == 'bird':
-        transmission_prob = (1-(strain['hs']**2)) * (1 - math.exp(-2.0))
+        transmission_prob = ((1-strain['hs'])**2) * (1 - math.exp(-2.0))
       
       if random.random() < transmission_prob:
         transmitted_strains.append(strain)

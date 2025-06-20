@@ -1,4 +1,4 @@
-import vhp_transmission_model_static_CircVar_stability_functions as bb
+import community_stability_sim_functions as bb
 import pandas as pd
 from tqdm import tqdm
 import argparse
