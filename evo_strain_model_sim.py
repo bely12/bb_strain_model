@@ -18,7 +18,7 @@ parser.add_argument('-yrs', type=int, help='number of years to simulate')
 parser.add_argument('-gen_fit', type=str, default='high', help='should generalists have high or low fitness vals?; [low, high]')
 parser.add_argument('-mut', type=float, default=0.01, help='per site mutation rate in antigen')
 parser.add_argument('-rec', type=float, default = 0.01, help = 'recombination rate')
-parser.add_argument('-replace', type=lambda x: (str(x).lower() == 'true'), default=True, help='should recombinants or mutated variants replace (defualt) the variant or be added')
+parser.add_argument('-replace', type=lambda x: (str(x).lower() == 'true'), default=False, help='should recombinants or mutated variants replace (defualt) the variant or be added')
 parser.add_argument('-out', default=None, help='prefix for output file')
 parser.add_argument('-run_tag', default = 1, help='unique id for each sim run when doing batch')
 args = parser.parse_args()
@@ -26,12 +26,13 @@ args = parser.parse_args()
 
 # print sim parameters
 print('Parameters','\n',
-      'Vector pop size: ',args.vec,'\n',
-      'host pop size: ', round(args.vec/50),'\n',
+      'selection: ', args.selection,'\n',
       'gene type: ', args.gene,'\n',
       'gene length: ',args.len,'\n',
-      'per site mutation rate: ', args.mut,'\n'
-      'selection: ', args.selection,'\n',
+      'per site mutation rate: ', args.mut,'\n',
+      'recombination rate: ', args.rec,'\n',
+      'Vector pop size: ',args.vec,'\n',
+      'host pop size: ', round(args.vec/50),'\n',
       'sim years: ', args.yrs,'\n',
       'batch progress (current run): ', args.run_tag)
 
@@ -53,13 +54,12 @@ for tick in temp_nymph_pop:
   for strain in tick['strains']:
     unique_lineage_ids.add(strain['lineage_id'])
 
-all_data = [{'run_tag': args.run_tag,
-             'year': ticks.year,
+all_data = [{'year': ticks.year,
              'infection_rate': ticks.infection_rate, # only available with ticks.pop_stats()
              'avg_strains_carried': ticks.num_carried, # ^
+             'unique_lineages': len(unique_lineage_ids),
              'avg_antigen_distance': ticks.avg_gen_dist, # only available with ticks.sample()
-             'spec_weight': 0.0, # ^
-             'unique_lineages': len(unique_lineage_ids)}]
+             'spec_weight': 0.0}] # ^
 
 
 ########## sim ##########
@@ -142,18 +142,17 @@ for year in tqdm(range(args.yrs)):
     for strain in tick['strains']:
       unique_lineage_ids.add(strain['lineage_id'])
 
-  all_data.append({'run_tag': args.run_tag,
-                   'year': ticks.year,
+  all_data.append({'year': ticks.year,
                    'infection_rate': ticks.infection_rate, # only available with ticks.pop_stats()
                    'avg_strains_carried': ticks.num_carried, # ^
+                   'unique_lineages': len(unique_lineage_ids),
                    'avg_antigen_distance': ticks.avg_gen_dist, # only available with ticks.sample()
-                   'spec_weight': ticks.sampled_spec_weight, # ^
-                   'unique_lineages': len(unique_lineage_ids)})
+                   'spec_weight': ticks.sampled_spec_weight}) # ^
 
   # mutate and recombination
   if year+1 != args.yrs:
-    ticks.mutate(gene= args.gene, rate = args.mut, replace=args.replace)
-    ticks.recombination(gene=args.gene, rate = args.rec, replace=args.replace)
+    ticks.mutate(replace=args.replace, gene= args.gene, rate = args.mut)
+    #ticks.recombination(replace=args.replace, gene=args.gene, rate = args.rec)
 
 # sample the final population 
 ticks.sample(args.gene)
@@ -168,6 +167,13 @@ if args.out != None:
 
   ##### YEARLY SYSTEM STATS #####
   df = pd.DataFrame(all_data)
+  df['run_id'] = run
+  df['selection'] = args.selection
+  df['gene_type'] = args.gene
+  df['rec_rate'] = args.rec
+  df['mut_rate'] = args.mut
+  df['gen_fitness'] = args.gen_fit
+  
   if str(args.run_tag) == "1":
     df.to_csv(args.out+'_sim_run_stats.tsv', mode= 'w', sep='\t', index=False, header=True)
   else:
@@ -180,6 +186,11 @@ if args.out != None:
     my_dict.append({'strain': strain, 'count': strain_counts[strain], 'freq': round(strain_counts[strain]/len(ticks.sampled_strains)*100,2)})
   df_sampled_strains = pd.DataFrame(my_dict)
   df_sampled_strains['run_id'] = run
+  df_sampled_strains['selection'] = args.selection
+  df_sampled_strains['gene_type'] = args.gene
+  df_sampled_strains['rec_rate'] = args.rec
+  df_sampled_strains['mut_rate'] = args.mut
+  df_sampled_strains['gen_fitness'] = args.gen_fit
   
   if str(args.run_tag) == "1":
     df_sampled_strains.to_csv(args.out+'_variant_freqs_sampled.tsv', mode= 'w', sep='\t', index=False, header=True)
@@ -194,6 +205,11 @@ if args.out != None:
       my_dict.append({'strain': strain, 'count': strain_counts2[strain], 'freq': round(strain_counts2[strain]/len(ticks.sampled_adaptive)*100,2)})
     df_sampled_adaptive_genes = pd.DataFrame(my_dict)
     df_sampled_adaptive_genes['run_id'] = run
+    df_sampled_adaptive_genes['selection'] = args.selection
+    df_sampled_adaptive_genes['gene_type'] = args.gene
+    df_sampled_adaptive_genes['rec_rate'] = args.rec
+    df_sampled_adaptive_genes['mut_rate'] = args.mut
+    df_sampled_adaptive_genes['gen_fitness'] = args.gen_fit
     
     if str(args.run_tag) == "1":
       df_sampled_adaptive_genes.to_csv(args.out+'_adpt_gene_freqs_sampled.tsv', mode= 'w', sep='\t', index=False, header=True)
@@ -208,6 +224,11 @@ if args.out != None:
     df_sampled_combined_genes['antigen'] = df_sampled_combined_genes['strain'].str[:args.len]
     df_sampled_combined_genes['adpt_gene'] = df_sampled_combined_genes['strain'].str[args.len:]    
     df_sampled_combined_genes['run_id'] = run
+    df_sampled_combined_genes['selection'] = args.selection
+    df_sampled_combined_genes['gene_type'] = args.gene
+    df_sampled_combined_genes['rec_rate'] = args.rec
+    df_sampled_combined_genes['mut_rate'] = args.mut
+    df_sampled_combined_genes['gen_fitness'] = args.gen_fit
     
     if str(args.run_tag) == "1":
       df_sampled_combined_genes.to_csv(args.out+'_combined_gene_freqs_sampled.tsv', mode= 'w', sep='\t', index=False, header=True)
@@ -219,14 +240,14 @@ if args.out != None:
   with open(args.out + '_pw_dists_sampled.tsv', 'a', newline='') as file:
     writer = csv.writer(file, delimiter='\t')
     for value in ticks.sampled_distances:
-      writer.writerow([run, value])
+      writer.writerow([run, value, args.selection, args.gene, args.rec, args.mut, args.gen_fit])
  
   ##### ADAPTIVE TRAIT VALUES *SAMPLED* #####
   if args.selection in ['adaptive', 'hybrid']:
     with open(args.out + '_adpt_vals_sampled.tsv', 'a', newline='') as file:
       writer = csv.writer(file, delimiter='\t')
       for value in ticks.sampled_adaptive_vals:
-        writer.writerow([run, value])
+        writer.writerow([run, value, args.selection, args.gene, args.rec, args.mut, args.gen_fit])
 
   
   ##### FINAL VARIANT FREQUENCIES *ENTIRE POPULATION* #####
