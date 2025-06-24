@@ -152,7 +152,7 @@ for year in tqdm(range(args.yrs)):
   # mutate and recombination
   if year+1 != args.yrs:
     ticks.mutate(replace=args.replace, gene= args.gene, rate = args.mut)
-    #ticks.recombination(replace=args.replace, gene=args.gene, rate = args.rec)
+    ticks.recombination(replace=args.replace, gene=args.gene, rate = args.rec)
 
 # sample the final population 
 ticks.sample(args.gene)
