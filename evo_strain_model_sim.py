@@ -13,7 +13,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-selection', help='immune, adaptive, neutral, hybrid\n')
 parser.add_argument('-gene', help='single, modular, multi')
 parser.add_argument('-len', type=int, help='size of bit string representing gene')
-parser.add_argument('-vec', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
+parser.add_argument('-vec', type=int, help='size of vector(tick) pop; needs to be at least 50 and even number')
+parser.add_argument('-rodents', type=int, help='size of rodent pop')
+parser.add_argument('-birds', type=int, help='size of bird pop')
 parser.add_argument('-yrs', type=int, help='number of years to simulate')
 parser.add_argument('-gen_fit', type=str, default='high', help='should generalists have high or low fitness vals?; [low, high]')
 parser.add_argument('-mut', type=float, default=0.01, help='per site mutation rate in antigen')
@@ -32,14 +34,18 @@ print('Parameters','\n',
       'per site mutation rate: ', args.mut,'\n',
       'recombination rate: ', args.rec,'\n',
       'Vector pop size: ',args.vec,'\n',
-      'host pop size: ', round(args.vec/50),'\n',
+      'rodent pop size: ', args.rodents, '\n',
+      'bird pop size: ', args.birds, '\n',
       'sim years: ', args.yrs,'\n',
       'batch progress (current run): ', args.run_tag)
 
 ##### initialize populations #####
-ticks = be.Vector(pop_size= args.vec, n_strains= 1, strain_length= args.len, gene=args.gene, lam= 0.5)
-host_pop_size = round(len(ticks.pop)/50)
-hosts = be.Host(host_pop_size)
+if args.selection == 'adaptive':
+  adpt = True
+else:
+  adpt = False
+ticks = be.Vector(pop_size= args.vec, n_strains= 1, strain_length= args.len, gene=args.gene, lam= 0.5, adpt_sel=adpt)
+hosts = be.Host(args.rodents, args.birds)
 
 ##### create immune selection probability tables #####
 if args.selection == 'hybrid' and args.gene == 'modular':

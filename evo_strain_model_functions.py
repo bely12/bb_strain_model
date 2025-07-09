@@ -58,10 +58,12 @@ def spec_weight(adaptive_vals_list):
 
 class Host:
 
-  def __init__(self, pop_size):
-
+  def __init__(self, rodents, birds):
+    
+    pop_size = rodents + birds
     if pop_size % 2 != 0:
       raise ValueError("The value of pop_size must be divisible by 2.")
+    
     hosts = []
     existing_ids = []
     for i in range(pop_size): # assign a unique id
@@ -72,7 +74,7 @@ class Host:
           break
       existing_ids.append(id)
 
-      if i < pop_size//2:
+      if i < rodents:
         host_type = 'rodent'
       else:
         host_type = 'bird'
