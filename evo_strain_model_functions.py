@@ -35,12 +35,19 @@ def adaptive_fitness(val, host, gen_fit = 'high'):
     elif host == 'rodent':
       probability = 1 - abs(val - 1)**1.5
     return round(probability, 3)
-  if gen_fit == 'low':
+  elif gen_fit == 'low':
     if host == 'bird':
       probability = (1-val)**2
     elif host == 'rodent':
       probability = val**2
     return round(probability, 3)
+  elif gen_fit == 'linear':
+    if host == 'bird':
+      probability = val
+    elif host == 'rodent':
+      probability = 1 - val
+    return round(probability,3)
+  
 
 def adaptive_trait_val(adaptive_gene):
   catch = []
