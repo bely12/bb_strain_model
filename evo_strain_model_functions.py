@@ -28,19 +28,22 @@ def distance_probabilities(values, curve, prob_min=0.0, prob_max=1.0):
     probabilities = [(prob_min + (prob_max - prob_min) * (val - min_val) / max_val) for val in values]
   return dict(zip(values, probabilities))
 
-def adaptive_fitness(val, host, gen_fit = 'high'):
+def adaptive_fitness(val, host, gen_fit = 'low'):
+  
   if gen_fit == 'high':
     if host == 'bird':
       probability = 1 - abs(val)**1.5
     elif host == 'rodent':
       probability = 1 - abs(val - 1)**1.5
     return round(probability, 3)
+  
   elif gen_fit == 'low':
     if host == 'bird':
       probability = (1-val)**2
     elif host == 'rodent':
       probability = val**2
     return round(probability, 3)
+  
   elif gen_fit == 'linear':
     if host == 'bird':
       probability = val
@@ -60,6 +63,9 @@ def spec_weight(adaptive_vals_list):
   for val in adaptive_vals_list:
     weights.append(((val - 0.5)**2)/len(adaptive_vals_list))
   return round(math.sqrt(sum(weights)),2)
+
+def calc_pop_cycle(rodents, birds, intensity):
+  return abs(rodents-birds) / ((rodents + birds) * intensity)
 
 ################################################################################
 
@@ -96,10 +102,32 @@ class Host:
     self.bird_pop = [d for d in self.pop if d.get('host_type') == 'bird']
     self.bird_pop_size = len(self.bird_pop)
 
-  def refresh(self, day):
+  def refresh(self, day, switch_ids, dynamic, growing_species):
     for host in self.pop:
       if host['born'] == day:
-        host['infections'] = []
+        host['infections'] = [] # clear infection status 
+        
+        if dynamic: # for use when fluctuating species numbers
+          if host['id'] in switch_ids:
+            host['host_type'] = growing_species
+    
+    # redefine sub_pops
+    self.rodent_pop = [d for d in self.pop if d.get('host_type') == 'rodent']
+    self.rodent_pop_size = len(self.rodent_pop)
+    self.bird_pop = [d for d in self.pop if d.get('host_type') == 'bird']
+    self.bird_pop_size = len(self.bird_pop)
+  
+  def host_switch(self, intensity, declining_species):
+    n = int(intensity * len(self.pop)) # how many hosts to switch ### will need a check built in to ensure even number
+
+    if declining_species == 'rodent':
+      hosts_to_switch = random.sample(self.rodent_pop, n) # pick n random members of rodent pop
+    elif declining_species == 'bird':
+      hosts_to_switch = random.sample(self.bird_pop, n) # pick n random members of bird pop
+
+    self.switch_ids = []
+    for host in hosts_to_switch:
+      self.switch_ids.append(host['id'])
 
 #####
 
