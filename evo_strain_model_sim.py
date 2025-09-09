@@ -208,6 +208,9 @@ for year in tqdm(range(args.yrs)):
 # sample the final population 
 ticks.sample(args.gene)
 
+# get host infection data
+hosts.host_infections(args.gene)
+
 ##### data output #####
 if args.out != None:
   import csv
@@ -229,6 +232,37 @@ if args.out != None:
     df.to_csv(args.out+'_sim_run_stats.tsv', mode= 'w', sep='\t', index=False, header=True)
   else:
     df.to_csv(args.out+'_sim_run_stats.tsv', mode= 'a', sep='\t', index=False, header=False)
+
+
+  ###### getting strain freqs in each host type ######
+  rodent_strain_counts = dict(Counter(hosts.rodent_strains))
+  bird_strain_counts = dict(Counter(hosts.bird_strains))
+
+  # make dataframes from dicts
+  rodent_df = pd.DataFrame.from_dict(rodent_strain_counts, orient="index", columns=["rodent_count"])
+  bird_df   = pd.DataFrame.from_dict(bird_strain_counts, orient="index", columns=["bird_count"])
+  # combine on strain index
+  df = pd.concat([rodent_df, bird_df], axis=1).fillna(0).astype(int)
+  # host population frequencies
+  df["rodent_freq"] = df["rodent_count"] / df["rodent_count"].sum()
+  df["bird_freq"]   = df["bird_count"]   / df["bird_count"].sum()
+  # combined counts and frequencies
+  df["combined_count"] = df["rodent_count"] + df["bird_count"]
+  df["combined_freq"]  = df["combined_count"] / df["combined_count"].sum()
+  # move strain out of index
+  df = df.reset_index().rename(columns={"index": "strain"})
+  df['run_id'] = run
+  df['selection'] = args.selection
+  df['gene_type'] = args.gene
+  df['rec_rate'] = args.rec
+  df['mut_rate'] = args.mut
+  df['gen_fitness'] = args.gen_fit
+
+  if str(args.run_tag) == "1":
+    df.to_csv(args.out+'_host_infection_freqs.tsv', mode= 'w', sep='\t', index=False, header=True)
+  else:
+    df.to_csv(args.out+'_host_infection_freqs.tsv', mode= 'a', sep='\t', index=False, header=False)
+
 
   ##### FINAL VARIANT FREQUENCIES *SAMPLED* #####
   strain_counts = dict(Counter(ticks.sampled_strains))

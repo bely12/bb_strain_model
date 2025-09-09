@@ -129,6 +129,27 @@ class Host:
     for host in hosts_to_switch:
       self.switch_ids.append(host['id'])
 
+  def host_infections(self, gene):
+    # get strains carried in rodents
+    self.rodent_strains = []
+    for host in self.rodent_pop:
+      if host['infections']: # only if host is carrying infections
+        for strain in host['infections']:
+          if gene == 'multi':
+            self.rodent_strains.append(strain['variant']+strain['adaptive_gene'])
+          else:
+            self.rodent_strains.append(strain['variant'])
+    
+    # get strains carried in birds
+    self.bird_strains = []
+    for host in self.bird_pop:
+      if host['infections']: # only if host is carrying infections
+        for strain in host['infections']:
+          if gene == 'multi':
+            self.bird_strains.append(strain['variant']+strain['adaptive_gene'])
+          else:
+            self.bird_strains.append(strain['variant'])
+
 #####
 
 class Vector:
@@ -457,134 +478,6 @@ class Vector:
           tick['strains'].extend(strains_to_add)
 
 
-  # def recombination(self, replace, gene = 'NA', rate = 0.01):
-  #   for tick in self.pop:
-  #     # only move forward if there are multiple strains being carried by the tick
-  #     if tick['strains'] != [] and len(tick['strains']) > 1:
-  #       strains = tick['strains']
-  #     else:
-  #       continue
-      
-  #     # cycle through each of the strains carried by the tick and decide if recombination will happen
-  #     for j in range(len(strains)):
-  #       if random.random() < rate:
-  #         break_start = random.randint(0, len(strains[j]['variant'])-1)
-  #         break_end = random.randint(break_start, len(strains[j]['variant']))
-  #         strain = strains[j]
-  #         strains_copy = copy.deepcopy(strains) # doing this so I can remove the recieving strain when choosing donor
-  #         strains_copy.remove(strain)
-  #         donor = random.choice(strains_copy)
-  #         recombinant = strain['variant'][:break_start] + donor['variant'][break_start:break_end] + strain['variant'][break_end:]
-
-  #         # update with recombinant
-  #         if recombinant != strain['variant'] and replace == True:
-  #           tick['strains'][j]['history'].append(recombinant) 
-  #           tick['strains'][j]['variant'] = recombinant 
-  #         if recombinant != strain['variant'] and replace == False:
-  #           if gene != 'multi': # accounts for different dicitonary structure of multi gene mode
-  #             tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': recombinant, 'history': strain['history']+[recombinant]})
-  #           else:
-  #             tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': recombinant, 'adaptive_gene': strain['adaptive_gene'], 'history': strain['history']+[recombinant], 'adp_history': strain['adp_history']})
-
-  #       # reapeat for adaptive gene if applicable 
-  #       if random.random() < rate and gene == 'multi':
-  #         break_start = random.randint(0, len(strains[j]['adaptive_gene'])-1)
-  #         break_end = random.randint(break_start, len(strains[j]['adaptive_gene']))
-  #         strain = strains[j]
-  #         strains_copy = copy.deepcopy(strains)
-  #         strains_copy.remove(strain)
-  #         donor = random.choice(strains_copy)
-  #         recombinant2 = strain['adaptive_gene'][:break_start] + donor['adaptive_gene'][break_start:break_end] + strain['adaptive_gene'][break_end:]
-
-  #         # update ticks strains seqs and history; decide to replace or add to community
-  #         if recombinant2 != strain['adaptive_gene'] and replace == True:
-  #           tick['strains'][j]['adp_history'].append(recombinant2) 
-  #           tick['strains'][j]['adaptive_gene'] = recombinant2 
-  #         if recombinant2 != strain['adaptive_gene'] and replace == False:
-  #           tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': strain['variant'], 'adaptive_gene': recombinant2, 'history': strain['history'], 'adp_history': strain['adp_history']+[recombinant2]})
-
-  # def mutate(self, replace, gene = 'NA', rate = 0.01): 
-  #   for tick in self.pop:
-  #     if tick['strains'] != []:
-  #       if not replace:
-  #         strains_to_add = []
-  #       for strain in tick['strains']:
-  #         mutated_variant = None
-  #         mutated_adp_gene = None
-          
-  #         variant = strain['variant']
-  #         mut_pois_dist = np.random.poisson(rate, len(variant))
-  #         if mut_pois_dist.sum() > 0:
-  #           new_string = []
-  #           for k in range(len(variant)):
-  #             if mut_pois_dist[k] > 0:
-  #               new_bit = str(random.randint(0,1))
-  #               new_string.append(new_bit)
-  #             else:
-  #               new_string.append(variant[k])
-  #           mutated_variant = ''.join(new_string)
-          
-  #         if gene == 'multi':
-  #           adp_gene = strain['adaptive_gene']
-  #           mut_pois_dist2 = np.random.poisson(rate, len(adp_gene))
-  #           if mut_pois_dist2.sum() > 0:
-  #             new_string2 = []
-  #             for k in range(len(adp_gene)):
-  #               if mut_pois_dist2[k] > 0:
-  #                 new_bit2 = str(random.randint(0,1))
-  #                 new_string2.append(new_bit2)
-  #               else:
-  #                 new_string2.append(adp_gene[k])
-  #             mutated_adp_gene = ''.join(new_string2)
-          
-  #         if replace:
-  #           if mutated_variant is not None and mutated_variant != variant:
-  #             strain['variant'] = mutated_variant
-  #             strain['history'].append(mutated_variant)
-  #           if gene == 'multi' and mutated_adp_gene is not None and mutated_adp_gene != adp_gene:
-  #             strain['adaptive_gene'] = mutated_adp_gene
-  #             strain['adp_history'].append(mutated_adp_gene)
-          
-  #         if not replace: 
-  #           if gene == 'multi': 
-  #             if mutated_variant is not None and mutated_adp_gene is not None: 
-  #               strains_to_add.append({'lineage_id': strain['lineage_id'], 'variant': mutated_variant, 'adaptive_gene': mutated_adp_gene, 'history': strain['history']+[mutated_variant], 'adp_history': strain['adp_history']+[mutated_adp_gene]})
-  #             elif mutated_variant is not None:
-  #               strains_to_add.append({'lineage_id': strain['lineage_id'], 'variant': mutated_variant, 'adaptive_gene': strain['adaptive_gene'], 'history': strain['history']+[mutated_variant], 'adp_history': strain['adp_history']})
-  #             elif  mutated_adp_gene is not None:
-  #               strains_to_add.append({'lineage_id': strain['lineage_id'], 'variant': strain['variant'], 'adaptive_gene': mutated_adp_gene, 'history': strain['history'], 'adp_history': strain['adp_history']+[mutated_adp_gene]})
-  #           elif mutated_variant is not None:
-  #             strains_to_add.append({'lineage_id': strain['lineage_id'], 'variant': mutated_variant, 'history': strain['history']+[mutated_variant]})
-        
-  #       if not replace and strains_to_add != []:
-  #         tick['strains'].extend(strains_to_add)
-
-  # def old_mutate(self, rate = 0.01):
-  #   for i in range(len(self.pop)):
-  #     if self.pop[i]['strains'] != []:
-  #       #temp_strain_set = copy.deepcopy(self.pop[i]['strains'])
-  #       #for j in range(len(temp_strain_set)):
-  #       for j in range(len(self.pop[i]['strains'])): # new
-  #         #variant = temp_strain_set[j]['variant']
-  #         variant = self.pop[i]['strains'][j]['variant'] # new
-  #         mut_pois_dist = np.random.poisson(rate, len(variant))
-  #         new_string = []
-  #         for k in range(len(variant)):
-  #           if mut_pois_dist[k] > 0:
-  #             new_bit = str(random.randint(0,1))
-  #             new_string.append(new_bit)
-  #           else:
-  #             new_string.append(variant[k])
-  #         mutated_string = ''.join(new_string)
-  #         if mutated_string != variant:
-  #           #temp_strain_set[j]['history'].append(mutated_string)
-  #           self.pop[i]['strains'][j]['history'].append(mutated_string) # new
-  #         #temp_strain_set[j]['variant'] = mutated_string
-  #         self.pop[i]['strains'][j]['variant'] = mutated_string # new
-  #       #self.pop[i]['strains'] = temp_strain_set
-  #     else:
-  #       continue
-
 ################################################################################
 # transmission functions
 
@@ -660,9 +553,12 @@ def tick2host_transmission(tick, host, selection, gene, transmission_probabiliti
               distances.append(hamming_distance(strain['variant'], strain2['variant']))
           x = min(distances)
           immune_prob = transmission_probabilities[x]
-          total_prob = hs_prob * immune_prob
-          if random.random() < total_prob:
+          
+          if (random.random() < immune_prob) & (random.random < hs_prob):
             transmitted_strains.append(strain)
+          # total_prob = hs_prob * immune_prob
+          # if random.random() < total_prob:
+          #   transmitted_strains.append(strain)
       
       return transmitted_strains
     
