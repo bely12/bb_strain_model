@@ -554,7 +554,7 @@ def tick2host_transmission(tick, host, selection, gene, transmission_probabiliti
           x = min(distances)
           immune_prob = transmission_probabilities[x]
           
-          if (random.random() < immune_prob) & (random.random < hs_prob):
+          if (random.random() < immune_prob) & (random.random() < hs_prob):
             transmitted_strains.append(strain)
           # total_prob = hs_prob * immune_prob
           # if random.random() < total_prob:
