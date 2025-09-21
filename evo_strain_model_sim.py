@@ -1,5 +1,6 @@
 import numpy as np
 import random
+from itertools import product
 import evo_strain_model_functions as be
 from tqdm import tqdm
 import argparse
@@ -25,7 +26,6 @@ parser.add_argument('-vec', type=int, default= 5000, help='size of vector(tick) 
 parser.add_argument('-rodents', type=int, default= 50, help='size of rodent pop')
 parser.add_argument('-birds', type=int, default= 50, help='size of bird pop')
 parser.add_argument('-flux', default='off', help='should host species pop sizes fluctuate')
-parser.add_argument('-flux_intensity', type= float, default= 0.01, help='portion of pop that switches per year with flux option')
 
 # OUTPUT
 parser.add_argument('-out', default=None, help='prefix for output file')
@@ -58,20 +58,6 @@ else:
 ticks = be.Vector(pop_size= args.vec, n_strains= 1, strain_length= args.len, gene=args.gene, lam= 0.5, adpt_sel=adpt)
 hosts = be.Host(args.rodents, args.birds)
 
-###
-if args.flux == 'on':
-  # calculate flux cycle and define counter
-  cycle = be.calc_pop_cycle(rodents=args.rodents, birds=args.birds, intensity=args.flux_intensity)
-  cycle_counter = 0
-  
-  # assign flux categories to host types
-  if args.rodents > args.birds:
-    declining_species = 'rodent'
-    growing_species = 'bird'
-  else: 
-    declining_species = 'bird'
-    growing_species = 'rodent'
-###
 
 ##### create immune selection probability tables #####
 if args.selection == 'hybrid' and args.gene == 'modular':
@@ -99,21 +85,8 @@ all_data = [{'year': ticks.year,
 #for year in range(sim_years):
 for year in tqdm(range(args.yrs)):
   #print('rodents ',hosts.rodent_pop_size,'\t','birds ',hosts.bird_pop_size)
-  ###
   if args.flux == 'on' and year > 0:
-    if cycle_counter < cycle:
-      cycle_counter += 1
-    else: # reset counter and flipo species flux categories
-      cycle_counter = 0
-      if declining_species == 'rodent':
-        declining_species = 'bird'
-        growing_species = 'rodent'
-      elif declining_species == 'bird':
-        declining_species = 'rodent'
-        growing_species = 'bird'
-    # choose hosts for flux 
-    hosts.host_switch(intensity=args.flux_intensity, declining_species=declining_species)
-  ###
+    hosts.pop_flux()
 
   # set tick/host interactions for the year
   interactions = ticks.interaction(hosts.pop)
@@ -123,9 +96,9 @@ for year in tqdm(range(args.yrs)):
     
     # refresh host pop
     if args.flux == 'on' and year > 0:
-      hosts.refresh(day= day, switch_ids= hosts.switch_ids, dynamic= True,  growing_species= growing_species)
+      hosts.refresh(day= day, switch_ids= hosts.switch_ids, dynamic= True)
     else:
-      hosts.refresh(day= day, switch_ids= [], dynamic= False, growing_species=None)
+      hosts.refresh(day= day, switch_ids= [], dynamic= False)
 
     # iterate through interactions to see if there is a bite for current day
     for j in range(len(interactions)):

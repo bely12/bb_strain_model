@@ -28,6 +28,15 @@ def distance_probabilities(values, curve, prob_min=0.0, prob_max=1.0):
     probabilities = [(prob_min + (prob_max - prob_min) * (val - min_val) / max_val) for val in values]
   return dict(zip(values, probabilities))
 
+def rising_curve(x, x_mid=0.5, y_mid=0.4, y_max=1.0):
+    b = np.log(y_max / y_mid) / (1 - x_mid)
+    a = y_mid / np.exp(b * x_mid)
+    return a * np.exp(b * x)
+
+def falling_curve(x, x_mid=0.5, y_mid=0.4, y_max=1.0):
+    # Just flip rising curve horizontally
+    return rising_curve(1 - x, x_mid, y_mid, y_max)
+
 def adaptive_fitness(val, host, gen_fit = 'low'):
   
   if gen_fit == 'high':
@@ -51,6 +60,14 @@ def adaptive_fitness(val, host, gen_fit = 'low'):
       probability = 1 - val
     return round(probability,3)
   
+  elif gen_fit == 'exp_mod':
+    val = np.clip(val, 0, 1)
+    if host == 'rodent':  
+      probability = rising_curve(val)
+    elif host == 'bird': 
+      probability = falling_curve(val)
+    return round(np.clip(probability, 0, 1), 3)
+
 
 def adaptive_trait_val(adaptive_gene):
   catch = []
@@ -64,8 +81,6 @@ def spec_weight(adaptive_vals_list):
     weights.append(((val - 0.5)**2)/len(adaptive_vals_list))
   return round(math.sqrt(sum(weights)),2)
 
-def calc_pop_cycle(rodents, birds, intensity):
-  return abs(rodents-birds) / ((rodents + birds) * intensity)
 
 ################################################################################
 
@@ -102,32 +117,41 @@ class Host:
     self.bird_pop = [d for d in self.pop if d.get('host_type') == 'bird']
     self.bird_pop_size = len(self.bird_pop)
 
-  def refresh(self, day, switch_ids, dynamic, growing_species):
-    for host in self.pop:
-      if host['born'] == day:
-        host['infections'] = [] # clear infection status 
-        
-        if dynamic: # for use when fluctuating species numbers
-          if host['id'] in switch_ids:
-            host['host_type'] = growing_species
-    
-    # redefine sub_pops
-    self.rodent_pop = [d for d in self.pop if d.get('host_type') == 'rodent']
-    self.rodent_pop_size = len(self.rodent_pop)
-    self.bird_pop = [d for d in self.pop if d.get('host_type') == 'bird']
-    self.bird_pop_size = len(self.bird_pop)
-  
-  def host_switch(self, intensity, declining_species):
-    n = int(intensity * len(self.pop)) # how many hosts to switch ### will need a check built in to ensure even number
+  def refresh(self, day, switch_ids, dynamic):
+      for host in self.pop:
+        if host['born'] == day:
+          host['infections'] = [] # clear infection status 
+          
+          if dynamic and len(self.switch_ids) >= 1: # for use when fluctuating species numbers
+            if host['id'] in switch_ids:
+              host['host_type'] = self.growing_species
+      
+      # redefine sub_pops
+      self.rodent_pop = [d for d in self.pop if d.get('host_type') == 'rodent']
+      self.rodent_pop_size = len(self.rodent_pop)
+      self.bird_pop = [d for d in self.pop if d.get('host_type') == 'bird']
+      self.bird_pop_size = len(self.bird_pop)
 
-    if declining_species == 'rodent':
-      hosts_to_switch = random.sample(self.rodent_pop, n) # pick n random members of rodent pop
-    elif declining_species == 'bird':
-      hosts_to_switch = random.sample(self.bird_pop, n) # pick n random members of bird pop
+  def pop_flux(self):
+    initial_rodent_count = len(self.rodent_pop)
+    new_rodent_count = np.random.binomial(len(self.pop), 0.5)
+    pop_diff = abs(initial_rodent_count - new_rodent_count)
 
-    self.switch_ids = []
-    for host in hosts_to_switch:
-      self.switch_ids.append(host['id'])
+    if new_rodent_count > initial_rodent_count:
+      self.growing_species = 'rodent'
+      hosts_to_switch = random.sample(self.bird_pop, pop_diff)
+    elif new_rodent_count < initial_rodent_count:
+      self.growing_species = 'bird'
+      hosts_to_switch = random.sample(self.rodent_pop, pop_diff)
+    else:
+      hosts_to_switch = 'none'
+
+    if hosts_to_switch != 'none':
+      self.switch_ids = []
+      for host in hosts_to_switch:
+        self.switch_ids.append(host['id'])
+    else: 
+      self.switch_ids = []
 
   def host_infections(self, gene):
     # get strains carried in rodents
@@ -358,7 +382,7 @@ class Vector:
                               'bite_day': bite_day})
     return interaction_list
 
-  def recombination(self, replace, gene = 'NA', rate = 0.01):
+  def recombination(self, replace, gene = 'NA', rate = 0.01): # *** I commented out select lines so changed so adaptive gene doesn't recombine ***
     for tick in self.pop:
       # only move forward if there are multiple strains being carried by the tick
       if tick['strains'] != [] and len(tick['strains']) > 1:
@@ -381,36 +405,35 @@ class Vector:
           recombinant = strain['variant']
           
         # reapeat for adaptive gene if applicable 
-        if random.random() < rate and gene == 'multi':
-          break_start = random.randint(0, len(strains[j]['adaptive_gene'])-1)
-          break_end = random.randint(break_start, len(strains[j]['adaptive_gene']))
-          strains_copy = copy.deepcopy(strains)
-          strains_copy.remove(strain)
-          donor = random.choice(strains_copy)
-          recombinant2 = strain['adaptive_gene'][:break_start] + donor['adaptive_gene'][break_start:break_end] + strain['adaptive_gene'][break_end:]
-        elif gene == 'multi':
-          recombinant2 = strain['adaptive_gene']
+        # if random.random() < rate and gene == 'multi':
+        #   break_start = random.randint(0, len(strains[j]['adaptive_gene'])-1)
+        #   break_end = random.randint(break_start, len(strains[j]['adaptive_gene']))
+        #   strains_copy = copy.deepcopy(strains)
+        #   strains_copy.remove(strain)
+        #   donor = random.choice(strains_copy)
+        #   recombinant2 = strain['adaptive_gene'][:break_start] + donor['adaptive_gene'][break_start:break_end] + strain['adaptive_gene'][break_end:]
+        # elif gene == 'multi':
+        #   recombinant2 = strain['adaptive_gene']
 
         # update with recombinant
         if replace: 
           if recombinant != strain['variant']:
             strains[j]['history'].append(recombinant) 
             strains[j]['variant'] = recombinant
-          if gene == 'multi' and recombinant2 != strain['adaptive_gene']:
-            strains[j]['adp_history'].append(recombinant2)
-            strains[j]['adaptive_gene'] = recombinant2
+          # if gene == 'multi' and recombinant2 != strain['adaptive_gene']:
+          #   strains[j]['adp_history'].append(recombinant2)
+          #   strains[j]['adaptive_gene'] = recombinant2
 
         elif not replace:  
           if gene != 'multi':
             if recombinant != strain['variant']:
               updated_strains.append({'lineage_id': strain['lineage_id'], 'variant': recombinant, 'history': strain['history']+[recombinant]})
-
-          elif recombinant != strain['variant'] and recombinant2 != strain['adaptive_gene']:
-            tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': recombinant, 'adaptive_gene': recombinant2, 'history': strain['history']+[recombinant], 'adp_history': strain['adp_history']+[recombinant2]})
+          # elif recombinant != strain['variant'] and recombinant2 != strain['adaptive_gene']:
+          #   tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': recombinant, 'adaptive_gene': recombinant2, 'history': strain['history']+[recombinant], 'adp_history': strain['adp_history']+[recombinant2]})
           elif recombinant != strain['variant']:
             tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': recombinant, 'adaptive_gene': strain['adaptive_gene'], 'history': strain['history']+[recombinant], 'adp_history': strain['adp_history']})
-          elif recombinant2 != strain['adaptive_gene']:
-            tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': strain['variant'], 'adaptive_gene': recombinant2, 'history': strain['history'], 'adp_history': strain['adp_history']+[recombinant2]})
+          # elif recombinant2 != strain['adaptive_gene']:
+          #   tick['strains'].append({'lineage_id': strain['lineage_id'], 'variant': strain['variant'], 'adaptive_gene': recombinant2, 'history': strain['history'], 'adp_history': strain['adp_history']+[recombinant2]})
 
       # update the actual pop
       if replace:
