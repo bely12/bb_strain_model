@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import gupta_strain_model_functions as be
+import gupta_strain_model_functions_clean as be
 from tqdm import tqdm
 import argparse
 from argparse import RawTextHelpFormatter
@@ -9,9 +9,8 @@ parser = argparse.ArgumentParser(
     description='simulation of 2 loci with 2 alleles each with recombination and different levels of immune cross protection'
     ' \n', formatter_class=RawTextHelpFormatter)
 # parameters
-parser.add_argument('-loci', type=int, default=2, help='number of 2 allele loci')
-parser.add_argument('-cp', default='high', help='degree of immune cross protection [high, medium, low]')
 parser.add_argument('-vec', type=int, help='size of vector(tick) population; needs to be at least 50 and even number')
+parser.add_argument('-hosts', type=int, help='host pop size')
 parser.add_argument('-yrs', type=int, help='number of years to simulate')
 parser.add_argument('-rec', type=float, default = 0.01, help = 'recombination rate')
 # record keeping
@@ -21,16 +20,14 @@ args = parser.parse_args()
 
 print('Parameters','\n',
       'Vector pop size: ',args.vec,'\n',
-      'host pop size: ', round(args.vec/50),'\n',
-      'number of loci: ',args.loci,'\n',
       'recombination rate: ', args.rec,'\n',
-      'cross protection level: ', args.cp, '\n',
       'simulated years: ', args.yrs,'\n',
       'batch progress (current run): ', args.run_tag)
 
 ##### INITIALIZE POPULATIONS #####
-ticks = be.Vector(pop_size= args.vec, loci= args.loci, lam= 0.5)
-hosts = be.Host(round(len(ticks.pop)/50))
+pathogens = be.Pathogen()
+ticks = be.Vector(pop_size= args.vec, pathogens = pathogens, lam= 0.5)
+hosts = be.Host(args.hosts)
 
 ##### INITIALIZE DATA COLLECTION #####
 all_data = [{'run_tag': args.run_tag,

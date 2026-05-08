@@ -178,7 +178,7 @@ class Host:
 
 class Vector:
 
-  def __init__(self, pop_size, n_strains, strain_length, gene, lam, adpt_sel = False):
+  def __init__(self, pop_size, n_strains, strain_length, gene, lam, adpt_sel = False, coexistence = False):
 
     if pop_size % 2 != 0:
       raise ValueError("The value of pop_size must be divisible by 2.")
@@ -204,9 +204,17 @@ class Vector:
             self.ancestral_strains.append(variant)
             break
     
+    # if adpt_sel or gene == 'multi':
+    #   adpt_strain_set = ['01'*(strain_length//2), '10'*(strain_length//2), '0'*(strain_length//2) + '1'*(strain_length//2), '1'*(strain_length//2) + '0'*(strain_length//2)]
+    #   adaptive_gene = random.choice(adpt_strain_set)
+
     if adpt_sel or gene == 'multi':
-      adpt_strain_set = ['01'*(strain_length//2), '10'*(strain_length//2), '0'*(strain_length//2) + '1'*(strain_length//2), '1'*(strain_length//2) + '0'*(strain_length//2)]
-      adaptive_gene = random.choice(adpt_strain_set)
+      if coexistence == True: # this will give a pure specialist for each species type plus 2 different pure generalists
+        adpt_strain_set = ['0'*strain_length, '1'*strain_length, '0'*(strain_length//2)+'1'*(strain_length//2), '01'*(strain_length//2)]
+      else: 
+        adpt_strain_set = ['01'*(strain_length//2), '10'*(strain_length//2), '0'*(strain_length//2) + '1'*(strain_length//2), '1'*(strain_length//2) + '0'*(strain_length//2)] # pure generalist combos
+        adaptive_gene = random.choice(adpt_strain_set)
+        #adaptive_gene = ''.join(random.choices(seq_bits, k=strain_length))
 
     # infection status for nymphs in starting tick pop
     nymph_infections = np.random.poisson(lam, size=(pop_size // 2))
@@ -238,6 +246,7 @@ class Vector:
 
         else: 
           variant = random.choice(self.ancestral_strains)
+          adaptive_gene = random.choice(adpt_strain_set)
           tick_pop.append({'id': id, 'stage': 'nymph', 'strains': [{'lineage_id': lin_id, 'variant':variant, 'adaptive_gene': adaptive_gene, 'history': [variant], 'adp_history': [adaptive_gene]}]}) 
           lin_id += 1
 

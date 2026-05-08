@@ -9,10 +9,8 @@ import copy
 
 class Host:
 
-  def __init__(self, pop_size, species = False):
+  def __init__(self, pop_size):
 
-    if pop_size % 2 != 0:
-      raise ValueError("The value of pop_size must be divisible by 2.")
     hosts = []
     existing_ids = []
     
@@ -24,26 +22,14 @@ class Host:
           break
       existing_ids.append(id)
 
-      if species == True: # assign specific host species
-        if i < pop_size//2:
-          host_type = 'rodent'
-        else:
-          host_type = 'bird'
-      else:
-        host_type = '-'
-
       # create host
       hosts.append({'id': id, 
-                    'infections': [], 
-                    'host_type': host_type, 
+                    'infections': [],
                     'born': random.choice(range(1,76))})
 
+    # define some attributes
     self.pop = hosts
     self.pop_size = len(self.pop)
-    self.rodent_pop = [d for d in self.pop if d.get('host_type') == 'rodent']
-    self.rodent_pop_size = len(self.rodent_pop)
-    self.bird_pop = [d for d in self.pop if d.get('host_type') == 'bird']
-    self.bird_pop_size = len(self.bird_pop)
 
   def refresh(self, day): # simulates host birth and death
     for host in self.pop:
@@ -52,15 +38,39 @@ class Host:
 
 ################################################################################
 
+class Pathogen:
+
+  def __init__(self):
+
+    # define pathogen alleles for 10 loci 
+    allele_A = ['A', 'a']
+    allele_B = ['B', 'b']
+    allele_C = ['C', 'c']
+    allele_D = ['D', 'd']
+    allele_E = ['E', 'e']
+    allele_F = ['F', 'f']
+    allele_G = ['G', 'g']
+    allele_H = ['H', 'h']
+    allele_I = ['I', 'i']
+    allele_J = ['J', 'j']
+
+    allele_sets = {'A': allele_A,
+                  'B': allele_B,
+                  'C': allele_C,
+                  'D': allele_D,
+                  'E': allele_E,
+                  'F': allele_F,
+                  'G': allele_G,
+                  'H': allele_H,
+                  'I': allele_I,
+                  'J': allele_J}
+
+    self.genotypes = [''.join(allele) for allele in itertools.product(*allele_sets)]
+  
 class Vector:
 
-  def __init__(self, pop_size, loci, lam):
+  def __init__(self, pop_size, pathogens, lam):
 
-    if pop_size % 2 != 0:
-      raise ValueError("The value of pop_size must be divisible by 2.")
-
-    # define the pathogens and starting infection status
-    self.strain_set = [''.join(bits) for bits in itertools.product('01', repeat= loci)]
     nymph_infections = np.random.poisson(lam, size=(pop_size // 2)) # poisson distribution for tick infection status
     
     # initialize the population of ticks
@@ -79,7 +89,8 @@ class Vector:
       if nymph_infections[i] == 0:
         tick_pop.append({'id': id, 'stage': 'nymph', 'strains': []})
       else:
-        tick_pop.append({'id': id, 'stage': 'nymph', 'strains': [random.choice(self.strain_set)]}) 
+        starter_infections = random.sample(pathogens, k=nymph_infections[i])
+        tick_pop.append({'id': id, 'stage': 'nymph', 'strains': starter_infections}) 
         lin_id += 1
 
     # create larva
@@ -104,19 +115,14 @@ class Vector:
     # define important stuff
     self.pop = tick_pop
     self.pop_size = len(self.pop)
-    self.nymph_pop = nymph_pop # probably won't use this
-    self.num_carried = sum(len(tick['strains']) for tick in self.nymph_pop) / len(self.nymph_pop)
+    self.nymph_pop = nymph_pop
     self.year = 0
-    self.poisson_infection_status = nymph_infections
     self.infection_rate = round(sum(1 for d in nymph_pop if d.get("strains")) / len(nymph_pop) * 100, 3)
 
     # get strain frequncies
     counts = dict(Counter(strain_pop))
-    # total_counts = sum(counts.values())
-    # frequencies = {key: round((value / total_counts), 2) for key, value in counts.items()}
-    # self.current_strain_count = len(frequencies) # to monitor number of strains in pop
     self.current_strain_count = 0
-    for genotype in self.strain_set:
+    for genotype in pathogens:
       if genotype not in counts:
         counts[genotype] = 0.0
       else:
@@ -169,9 +175,6 @@ class Vector:
 
     # get strain frequncy data
     counts = dict(Counter(strain_pop))
-    # total_counts = sum(counts.values())
-    # frequencies = {key: round((value / total_counts), 2) for key, value in counts.items()}
-    # self.current_strain_count = len(frequencies) # to monitor number of strains in pop
     self.current_strain_count = 0
     for genotype in self.strain_set:
       if genotype not in counts:
@@ -206,33 +209,36 @@ class Vector:
     return interaction_list
 
 
-  def recombination(self, rate = 0.01):
-    break_point = len(self.strain_set[0]) // 2
+  def recombination(self, lam = 0.01):
     for tick in self.pop:
       # only move forward if there are multiple strains being carried by the tick
       if tick['strains'] != [] and len(tick['strains']) > 1:
         strains = tick['strains']
       else:
         continue
-      # cycle through each of the strains carried by the tick and decide if recombination will happen
-      for j in range(len(strains)):
-        if random.random() < rate:
-          # if yes - define the receiving strain; make a temp copy of all strains minus the receiving strain and assign a donor
-          strain = strains[j]
+
+      for strain in strains: # cycle through variants
+        recombination_status = (np.random.poisson(lam, 10) > 0).astype(int) # determine recombination for each loci
+          
+        if (recombination_status == 1).any(): # check to make sure at least one recombination event will happen
           strains_copy = copy.deepcopy(strains)
           strains_copy.remove(strain)
           donor = random.choice(strains_copy)
           
-          # using a 50:50 chance of whether recomb is first half of seq or last; induce recombination
-          if random.random() < 0.5:
-            new_strain = strain[:break_point] + donor[break_point:]
-          else:
-            new_strain = donor[:break_point] + strain[break_point:]
-          tick['strains'][j] = new_strain # recombined strain replaces parent strain
+          loci_list = list(strain) # convert string to a list so I can mutate it
+          loci_index = 0
+          for decision in recombination_status:
+            if decision == 1:
+              loci_list[loci_index] = donor[loci_index]
+            loci_index +=1
+          
+          new_strain = "".join(loci_list)
+          if new_strain not in strains:
+            strains[strains.index(strain)] = new_strain
           
 ################################################################################
 
-def tick2host_transmission(tick, host, cross_protection = 'high'):
+def tick2host_transmission(tick, host):
 
   # create the transmission community from tick
   if tick['strains'] == []:
@@ -256,45 +262,17 @@ def tick2host_transmission(tick, host, cross_protection = 'high'):
 
     # if the host has infections
     if host['infections'] != []:
-      seen_allele_1 = []
-      seen_allele_2 = []
-      for infection_strain in host['infections']:
-        if infection_strain[0] in seen_allele_1:
-          continue
-        else:
-          seen_allele_1.append(infection_strain[0])
-        
-        if infection_strain[1] in seen_allele_2:
-          continue
-        else:
-          seen_allele_2.append(infection_strain[1])
-      
-      for strain in tick_transmission_community:
-        matches = 0
-        allele_1 = strain[0]
-        allele_2 = strain[1]
-        if allele_1 in seen_allele_1:
-          matches += 1
-        if allele_2 in seen_allele_2:
-          matches += 1
-      
-      if matches == 2:
-        fitness = 0
-      if matches == 0: 
-        fitness = 0.7 # transmission probability same as when there are no current infections
-
-      if cross_protection == 'high' and matches == 1:
-        fitness = 0.2 
-      if cross_protection == 'medium' and matches == 1:
-        fitness = 0.4
-      if cross_protection == 'low' and matches == 1:
-        fitness = 0.6
-      if cross_protection == 'none' and matches == 1:
-        fitness = 0.7
-      
-      if random.random() < fitness:
-        transmitted_strains.append(strain)
-    return transmitted_strains
+      for transmission_strain in tick_transmission_community:
+        most_similar = []
+        for host_strain in host['infections']:
+          matches = sum(loci_host == loci_vector for loci_host, loci_vector in zip(host_strain, transmission_strain))
+          most_similar.append(matches)
+        immune_val = max(most_similar)
+        fitness = (10-immune_val) * 0.1
+        if random.random() < fitness:
+          transmitted_strains.append(transmission_strain)
+    
+      return transmitted_strains
   
   else:
     return []

@@ -26,6 +26,7 @@ parser.add_argument('-vec', type=int, default= 5000, help='size of vector(tick) 
 parser.add_argument('-rodents', type=int, default= 50, help='size of rodent pop')
 parser.add_argument('-birds', type=int, default= 50, help='size of bird pop')
 parser.add_argument('-flux', default='off', help='should host species pop sizes fluctuate')
+parser.add_argument('-coexistence', default='off', help='pathogen pop will be mix of specialists and generalists at start')
 
 # OUTPUT
 parser.add_argument('-out', default=None, help='prefix for output file')
@@ -54,8 +55,14 @@ if args.selection == 'adaptive':
 else:
   adpt = False
 
+# set coexistence mode on or off
+if args.coexistence == 'on':
+  coexist = True
+else:
+  coexist = False
+
 # create vector and host populations
-ticks = be.Vector(pop_size= args.vec, n_strains= 1, strain_length= args.len, gene=args.gene, lam= 0.5, adpt_sel=adpt)
+ticks = be.Vector(pop_size= args.vec, n_strains= 1, strain_length= args.len, gene=args.gene, lam= 0.5, adpt_sel=adpt, coexistence=coexist)
 hosts = be.Host(args.rodents, args.birds)
 
 
