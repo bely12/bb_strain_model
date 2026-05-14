@@ -1,17 +1,15 @@
-# StrainSim
+# Bb-strain-model
 ### An agent-based simulation of *Borrelia* strain evolution through vector-host transmission cycles
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![R](https://img.shields.io/badge/R-4.0%2B-276DC3?style=flat-square&logo=r&logoColor=white)](https://www.r-project.org/)
-![Type](https://img.shields.io/badge/Type-Agent--Based%20Model-lightgrey?style=flat-square)
-![System](https://img.shields.io/badge/System-Vector--Host--Pathogen-informational?style=flat-square)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
 ## Overview
 
-**SIM-vhp** is an agent-based simulation framework for investigating the evolutionary and ecological forces that structure pathogen strain diversity in enzootic vector-host-pathogen transmission systems. The model is developed in the context of *Borrelia burgdorferi* — the causative agents of Lyme disease — and is motivated by two hypotheses in the literature regarding the maintenance of distinct, co-circulating strains in natural *Borrelia* populations:
+**Bb-strain-model** is an agent-based simulation framework for investigating the evolutionary and ecological forces that structure pathogen strain diversity in enzootic vector-host-pathogen transmission systems. The model is developed in the context of *Borrelia burgdorferi* — the causative agents of Lyme disease — and is motivated by two hypotheses in the literature regarding the maintenance of distinct, co-circulating strains in natural *Borrelia* populations:
 
 1. **Immune selection** (via negative frequency-dependent selection) — rare strains are favoured because hosts have not yet developed immunity to them, generating generating antigenically distinct variants that lack host immune cross reactivity 
 2. **Multiple niche polymorphism via host specialization** (adaptive selection) — strains are locally adapted to exploit different reservoir host species, partitioning the pathogen population along host lines
@@ -44,6 +42,7 @@ This simulation was developed to explore how each selective force, independently
 | `Host` | Vertebrate reservoir population, composed of rodents and birds in user-defined proportions. Each host has a birth day (simulating annual turnover) at which infection history is cleared. |
 | `Pathogen` | Strains carried within individual ticks and hosts, represented as dictionaries tracking gene sequence, lineage ID, and mutation/recombination history. Gene are represented as a **binary string** of user-defined length (*η* bits), analogous to a simplified antigenic gene sequence (e.g. *ospC*). The simulation begins with a single ancestral sequence and diversifies through per-site mutation and recombination during the transmission cycle.|
 
+
 ### Selection Regimes
 
 The transmission probability from tick to host is modulated by the active selection mode:
@@ -54,6 +53,7 @@ The transmission probability from tick to host is modulated by the active select
 | `adaptive` | Host specialization / multiple niche polymorphism | Fitness function of the strain's adaptive trait value and host species identity; specialist strains have high fitness in their preferred host |
 | `none` | No selection (genetic drift baseline) | Fixed probability; all strains transmit equally regardless of host immune history or host species |
 | `hybrid` | Combined immune + adaptive selection | Transmission requires passing both an immune distance threshold and a host-specialization fitness check, weighted equally |
+
 
 ### Simulation Algorithm
 
@@ -202,7 +202,7 @@ Under the `none` regime, transmission is independent of antigenic identity and h
 
 If you use or adapt this simulation in your research, please cite:
 
-> [Brandon Ely] ([2026]). The Emergence, Maintenance, and Diveristy of Strains in Microbial Pathogen Populations* [City Univeristy of New York, Hunter College / Repository URL]
+> [Brandon Ely] (2026). The Emergence, Maintenance, and Diveristy of Strains in Microbial Pathogen Populations* [City Univeristy of New York, Hunter College / https://github.com/bely12/bb_strain_model]
 
 ---
 
