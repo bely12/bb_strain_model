@@ -59,7 +59,7 @@ The transmission probability from tick to host is modulated by the active select
 
 The simulation proceeds in discrete annual cycles. Within each year, daily resolution is used to schedule tick-host interactions. The full algorithm is illustrated below.
 
-![Simulation Algorithm](sim_algorithm.png)
+![Simulation Algorithm](<img src="sim_algorithm.png" width="600"/>)
 
 ---
 
