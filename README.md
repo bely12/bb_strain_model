@@ -7,6 +7,8 @@
 
 ---
 
+<img src="model_illustration.png" width="750"/>
+
 ## Overview
 
 **Bb-strain-model** is an agent-based simulation framework for investigating the evolutionary and ecological forces that structure pathogen strain diversity in enzootic vector-host-pathogen transmission systems. The model is developed in the context of *Borrelia burgdorferi* — the causative agents of Lyme disease — and is motivated by two hypotheses in the literature regarding the maintenance of distinct, co-circulating strains in natural *Borrelia* populations:
