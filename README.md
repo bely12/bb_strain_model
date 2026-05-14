@@ -7,7 +7,9 @@
 
 ---
 
-<img src="model_illustration.png" width="750"/>
+<p align="center">
+  <img src="model_illustration.png" width="750"/>
+</p>
 
 ## Overview
 
