@@ -52,11 +52,24 @@ rm(list = setdiff(ls(), "all_sampled_dists"))
 # add a category for distinct parameters
 all_sampled_dists$parameters <- paste(all_sampled_dists$selection, all_sampled_dists$gen_fit, sep = '_')
 
+# *for jumping in with a saved sampled dataset*
+setwd('/Users/brandonely/Downloads')
+all_sampled_dists <- read.table('all_sampled_dists.tsv', header = T, sep = '\t')
+
 # mean pw distance
 df <- all_sampled_dists %>%
   group_by(selection, run_id) %>%
   summarise(
     mean_pw_dist = mean(distance))
+
+# get mean pw distance for each condition
+condition_means <- df %>%
+  group_by(selection) %>%
+  summarise(
+    mean_pw_dist = mean(mean_pw_dist),
+    sd_pw_dist = sd(mean_pw_dist),
+    n = n()
+  )
 
 # plot
 df %>%
@@ -74,6 +87,12 @@ df %>%
 setwd('/Users/brandonely/Desktop/bb_strain_model_dev/evo_sim/results_tables/new_plots/')
 #ggsave('mean_pw_antigen_distance_boxplot_DIS.png', height = 8, width = 8)  
 
+
+# stat tests
+anova_result <- aov(mean_pw_dist ~ selection, data = df)
+tukey_result <- TukeyHSD(anova_result)
+tukey_df <- as.data.frame(tukey_result$selection)
+tukey_df$comparison <- rownames(tukey_df)
 
 
 # plot
@@ -101,62 +120,62 @@ all_sampled_dists %>%
 setwd('/Users/brandonely/Desktop/bb_strain_model_dev/evo_sim/results_tables/new_plots/')
 #ggsave('all_pw_antigen_distance_histogram_DIS.png', height = 8, width = 6)  
 
-df <- all_sampled_dists %>% select(distance, selection, run_id)
-
-# define lower, intermediate, high ranges
-low_range <- c(0, 3)    # distances before gap
-mid_range <- c(4, 8) # intermediate / gap
-high_range <- c(9,20) # high distances
-
-mid_frac_norm <- df %>%
-  group_by(selection, run_id) %>%
-  summarise(
-    n_low = sum(distance >= low_range[1] & distance <= low_range[2]),
-    n_mid = sum(distance >= mid_range[1] & distance <= mid_range[2]),
-    n_high = sum(distance >= high_range[1] & distance <= high_range[2]),
-    mid_frac_rel = n_mid / (n_low + n_mid + n_high),
-    .groups = "drop"
-  )
-
-#print(mid_frac_norm)
-
-# ANOVA
-anova_df <- mid_frac_norm %>%
-  aov(mid_frac_rel ~ selection, data = .) %>%
-  tidy()
+# df <- all_sampled_dists %>% select(distance, selection, run_id)
+# 
+# # define lower, intermediate, high ranges
+# low_range <- c(0, 3)    # distances before gap
+# mid_range <- c(4, 8) # intermediate / gap
+# high_range <- c(9,20) # high distances
+# 
+# mid_frac_norm <- df %>%
+#   group_by(selection, run_id) %>%
+#   summarise(
+#     n_low = sum(distance >= low_range[1] & distance <= low_range[2]),
+#     n_mid = sum(distance >= mid_range[1] & distance <= mid_range[2]),
+#     n_high = sum(distance >= high_range[1] & distance <= high_range[2]),
+#     mid_frac_rel = n_mid / (n_low + n_mid + n_high),
+#     .groups = "drop"
+#   )
+# 
+# #print(mid_frac_norm)
+# 
+# # ANOVA
+# anova_df <- mid_frac_norm %>%
+#   aov(mid_frac_rel ~ selection, data = .) %>%
+#   tidy()
 
 #write.table(anova_df, 'anova_res_intermediate_gap.tsv', quote = F, row.names = F, sep = '\t')
 
 # Tukey HSD
-tukey_df <- mid_frac_norm %>%
-  aov(mid_frac_rel ~ selection, data = .) %>%
-  TukeyHSD() %>%
-  tidy()
+# tukey_df <- mid_frac_norm %>%
+#   aov(mid_frac_rel ~ selection, data = .) %>%
+#   TukeyHSD() %>%
+#   tidy()
 #write.table(tukey_df, 'tukey_res_intermediate_gap.tsv', quote = F, row.names = F, sep = '\t')
 
-mid_frac_norm %>% 
-  ggplot(aes(x = selection, y = mid_frac_rel, fill = selection)) +
-  #geom_col(width = 0.6) +
-  geom_boxplot(outliers = F) +
-  geom_jitter() +
-  #geom_text(aes(label = round(mid_frac_rel, 2)), vjust = -0.5, size = 5) +
-  #scale_y_continuous(limits = c(0, 1)) +
-  labs(
-    x = "Selection",
-    y = "relative frequency",
-    title = "Frequncy of Intermediate Genotypes"
-  ) +
-  theme_bw(base_size = 14) +
-  theme(legend.position = "none",
-        plot.title = element_text(size = 25),
-        axis.title.y = element_text(size = 25, face = 'bold'),
-        axis.text = element_text(size = 25, face = 'bold'),
-        axis.title.x = element_text(size = 25, face = 'bold'))
-        #legend.text = element_text(size = 25),
-        #legend.title = element_text(size = 25),
-        #strip.text = element_text(size = 25)))
-
-setwd('/Users/brandonely/Desktop/bb_strain_model_dev/evo_sim/results_tables/new_plots/')
+# mid_frac_norm %>% 
+#   ggplot(aes(x = selection, y = mid_frac_rel, fill = selection)) +
+#   #geom_col(width = 0.6) +
+#   geom_boxplot(outliers = F) +
+#   geom_jitter() +
+#   #geom_text(aes(label = round(mid_frac_rel, 2)), vjust = -0.5, size = 5) +
+#   #scale_y_continuous(limits = c(0, 1)) +
+#   labs(
+#     x = "Selection",
+#     y = "relative frequency",
+#     title = "Frequncy of Intermediate Genotypes"
+#   ) +
+#   theme_bw(base_size = 14) +
+#   theme(legend.position = "none",
+#         plot.title = element_text(size = 25),
+#         axis.title.y = element_text(size = 25, face = 'bold'),
+#         axis.text = element_text(size = 25, face = 'bold'),
+#         axis.title.x = element_text(size = 25, face = 'bold'))
+#         #legend.text = element_text(size = 25),
+#         #legend.title = element_text(size = 25),
+#         #strip.text = element_text(size = 25)))
+# 
+# setwd('/Users/brandonely/Desktop/bb_strain_model_dev/evo_sim/results_tables/new_plots/')
 #ggsave('intermediate_genotype_rel_freq_DIS.png', height = 8, width = 8)
 
 
@@ -164,11 +183,24 @@ setwd('/Users/brandonely/Desktop/bb_strain_model_dev/evo_sim/results_tables/new_
 ######
 
 # function to compute bimodality coefficient
+
+### BC compute accounting for finite sample size ###
+# compute_bc <- function(x) {
+#   n <- length(x)
+#   g <- skewness(x)
+#   k <- kurtosis(x)  # regular kurtosis from moments (normal = 3)
+#   k_excess <- k - 3  # convert to excess kurtosis
+#   BC <- (g^2 + 1) / (k_excess + 3 * ((n - 1)^2) / ((n - 2) * (n - 3)))
+#   return(BC)
+# }
+### ###
+
+### BC compute simple Hartigan method ###
 compute_bc <- function(x) {
   n <- length(x)
   g <- skewness(x)
-  k <- kurtosis(x)
-  BC <- (g^2 + 1) / (k + 3 * ((n - 1)^2) / ((n - 2) * (n - 3)))
+  k <- kurtosis(x)  # regular kurtosis from moments
+  BC <- (g^2 + 1) / k
   return(BC)
 }
 
@@ -213,9 +245,9 @@ bimodality_metrics %>%
         axis.title.x = element_text(size = 25, face = 'bold'))
 
 setwd('/Users/brandonely/Desktop/bb_strain_model_dev/evo_sim/results_tables/new_plots/')
-#ggsave('bimodality_coefficient_DIS.png', height = 8, width = 8)
+#ggsave('bimodality_coefficient_DIS2.png', height = 8, width = 8)
 
 
-
+#write.table(all_sampled_dists, 'all_sampled_dists.tsv', quote = F, row.names = F, sep = '\t')
   
   
